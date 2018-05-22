@@ -14,9 +14,7 @@
 
 package main
 
-import (
-	"github.com/Kindratte/swarmgo/cmd"
-)
+import "github.com/Kindratte/swarmgo/cmd"
 
 func main() {
 	cmd.Execute()

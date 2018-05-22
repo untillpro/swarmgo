@@ -8,6 +8,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"crypto/rsa"
+	"os"
+	"path/filepath"
 )
 
 func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
@@ -61,11 +63,12 @@ func generatePublicKey(privatekey *rsa.PublicKey) ([]byte, error) {
 
 // writePemToFile writes keys to a file
 func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
+	folder,_ := filepath.Split(saveFileTo)
+	os.MkdirAll(folder, os.ModePerm)
 	err := ioutil.WriteFile(saveFileTo, keyBytes, 0600)
 	if err != nil {
 		return err
 	}
-
 	log.Printf("Key saved to: %s", saveFileTo)
 	return nil
 }

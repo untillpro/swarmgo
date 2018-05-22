@@ -16,31 +16,32 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"os"
-	"path"
-	"fmt"
-	"os/exec"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
+	"github.com/mitchellh/go-homedir"
+	"path/filepath"
+	"log"
 )
 
 // addNodeCmd represents the addNode command
 var addNodeCmd = &cobra.Command{
 	Use:   "add",
 	Short: "add <ip>",
-	Long: `Add node with current IP to cluster and do some installations???`,
-	Args: cobra.ExactArgs(1),
+	Long:  `Add node with current IP to cluster and do some installations???`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		go func(ip string) {
-			out := exec.Command("ssh", "root@" + ip)
-			fmt.Println(out)
-		}(args[0])
+		user := "cluster"
+		host := args[0]
+		log.Println("Host " + host)
 		publicKeyName := ".ssh/id_rsa.pub"
 		privateKeyName := ".ssh/id_rsa"
-		home := os.Getenv("HOME")
+		home, err := homedir.Dir()
+		CheckErr(err)
 		var publicKeyFile string
 		var privateKeyFile string
 		if len(home) > 0 {
-			publicKeyFile = path.Join(home, ".ssh/id_rsa.pub")
-			privateKeyFile = path.Join(home, ".ssh/id_rsa")
+			publicKeyFile = filepath.Join(home, ".ssh/id_rsa.pub")
+			privateKeyFile = filepath.Join(home, ".ssh/id_rsa")
 		} else {
 			publicKeyFile = appendChildToExecutablePath(publicKeyName)
 			privateKeyFile = appendChildToExecutablePath(privateKeyName)
@@ -48,25 +49,60 @@ var addNodeCmd = &cobra.Command{
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {
 			bitSize := 4096
 			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile)
-			if err != nil {
-				panic(err)
-			}
+			CheckErr(err)
+		} else {
+			log.Println("Keys already exist")
 		}
-
-		//dir, err := ioutil.TempDir("", "cluster")
-		//if err != nil {
-		//	log.Fatal(err)
-		//	panic(err)
-		//}
-		//defer os.RemoveAll(dir)
-
-		//change port to ssh service
-		//b, err := ioutil.ReadFile("input.txt")
-		//if err != nil {
-		//	panic(err)
-		//}
-
-
+		log.Println("Connecting to remote servers root with password..")
+		sshConfig := &ssh.ClientConfig{
+			User:            "root",
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			//pass password from args?
+			Auth: []ssh.AuthMethod{ssh.Password("pas")},
+		}
+		//add user "cluster"
+		execSshCommand(host, "adduser --disabled-password --gecos \"\" "+user, sshConfig)
+		log.Println("New user " + user + " added")
+		//generate random password for user cluster
+		pass := generateRandomString(32)
+		execSshCommand(host, "echo \""+user+":"+pass+"\" | sudo chpasswd", sshConfig)
+		execSshCommand(host, "usermod -aG sudo "+user, sshConfig)
+		log.Println("Sudo permissions given to " + user)
+		sshConfig = &ssh.ClientConfig{
+			User:            user,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			//pass password from args?
+			Auth: []ssh.AuthMethod{ssh.Password(pass)},
+		}
+		log.Println("Relogin from root to " + user)
+		execSshCommand(host, "sudo passwd -l root", sshConfig)
+		log.Println("Root password disabled")
+		execSshCommand(host, "mkdir ~/.ssh", sshConfig)
+		execSshCommand(host, "chmod 700 ~/.ssh", sshConfig)
+		execSshCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
+		execSshCommand(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
+		//read public key
+		pemBytes, err := ioutil.ReadFile(publicKeyFile)
+		CheckErr(err)
+		execSshCommand(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
+		log.Println("Host public key added to remote server")
+		execSshCommand(host, "sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
+			sshConfig)
+		log.Println(user + " password auth disabled")
+		pemBytes, err = ioutil.ReadFile(privateKeyFile)
+		CheckErr(err)
+		signer, err := ssh.ParsePrivateKey(pemBytes)
+		CheckErr(err)
+		log.Println("Connecting to remote servers " + user + " with public key")
+		sshConfig = &ssh.ClientConfig{
+			User:            user,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		}
+		execSshCommand(host, "sudo ufw allow OpenSSH", sshConfig)
+		execSshCommand(host, "sudo yes | sudo ufw enable", sshConfig)
+		execSshCommand(host, "sudo ufw reload", sshConfig)
+		log.Println("Firewall reloaded to work with OpenSSH")
 	},
 }
 
