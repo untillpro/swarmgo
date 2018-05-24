@@ -15,19 +15,20 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"log"
 )
+
+var ip string
 
 // nodeCmd represents the node command
 var nodeCmd = &cobra.Command{
 	Use:   "node",
 	Short: "Root command for nodes",
-	Long:  `Root command for nodes: add, change, remove nodes`,
+	Long:  `Root command for nodes: add, docker, swarm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Specify operation! \n" +
-			"add, change or delete <args>")
+		log.Println("Specify operation! \n" +
+			"add <args>, docker, swarm <flags>")
 	},
 }
 
@@ -39,7 +40,7 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// nodeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
+	nodeCmd.PersistentFlags().StringVarP(&ip, "ip", "i", "", "Specify node host")
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// nodeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
