@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"log"
+	"fmt"
 )
 
 // nodeCmd represents the node command
@@ -25,7 +25,7 @@ var nodeCmd = &cobra.Command{
 	Short: "Root command for nodes",
 	Long:  `Root command for nodes: add, docker, swarm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Specify operation! \n" +
+		fmt.Println("Specify operation! \n" +
 			"add <args>, docker <args>, swarm <arg> [#flag]")
 	},
 }

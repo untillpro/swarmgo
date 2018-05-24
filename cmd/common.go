@@ -220,7 +220,7 @@ func inputFunc(hostsWithNumbers map[int]string) string {
 		fmt.Fprintf(b, "%d : %s\n", k, v)
 	}
 	log.Println("\n" + b.String())
-	input := strings.Trim(waitUserInput(), "\n ")
+	input := strings.Trim(waitUserInput(), "\n\r ")
 	convertedInput, err := strconv.Atoi(input)
 	CheckErr(err)
 	if value, ok := hostsWithNumbers[convertedInput]; ok {
