@@ -31,14 +31,20 @@ const (
 
 // swarmCmd represents the swarm command
 var swarmCmd = &cobra.Command{
-	Use:   "swarm",
+	Use:   "swarm <arg> [#flag]",
 	Short: "Choose --mode= [manager, worker], empty means `init`",
-	Long:  `Root command for swarm: swinit, manager, worker`,
+	Long:  `Initialize or joins to swarm for given node with default params`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("Start swarm execution...")
 		version := findDockerVersionFromClusterfile()
 		nodesFileEntry := readNodesFileIfExists()
-		host := takeHostFromFlagOrChooseFromNodesFile(nodesFileEntry)
+		var host string
+		if len(args) == 1 {
+			host = args[0]
+		} else {
+			host = takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)[0]
+		}
 		config := findSshKeysAndInitConnection()
 		if !checkDockerInstallation(host, version, config) {
 			log.Fatal("Need to install docker " + version + " before init swarm")
@@ -90,7 +96,7 @@ func writeTokenToFile(mode, host string, config *ssh.ClientConfig) {
 	workerFile := appendChildToExecutablePath(mode)
 	err := ioutil.WriteFile(workerFile, []byte(token), 0644)
 	CheckErr(err)
-	log.Println("Token wrote")
+	log.Println(mode + " token wrote")
 }
 
 func joinToSwarm(host, file string, config *ssh.ClientConfig) {

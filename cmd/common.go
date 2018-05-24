@@ -64,6 +64,10 @@ func execSshCommand(host, cmd string, config *ssh.ClientConfig) string {
 	return string(bs)
 }
 
+func logWithPrefix(host, str string) {
+	log.Println(host + " : " + str)
+}
+
 func sudoExecSshCommand(host, cmd string, config *ssh.ClientConfig) string {
 	return execSshCommand(host, "sudo " + cmd, config)
 }
@@ -73,7 +77,6 @@ func initSshConnectionConfigWithPublicKeys(privateKeyFile string) *ssh.ClientCon
 	CheckErr(err)
 	signer, err := ssh.ParsePrivateKey(pemBytes)
 	CheckErr(err)
-	log.Println("Connecting to remote servers with public key")
 	sshConfig := &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -180,27 +183,35 @@ func CheckErr(err error) {
 	}
 }
 
-func takeHostFromFlagOrChooseFromNodesFile(nodesFileEntry []byte) string{
+func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string{
 	re := regexp.MustCompile(`\r?\n`)
 	input := re.ReplaceAllString(string(nodesFileEntry), " ")
-	hosts := strings.Split(input, " ")
-	var host string
-	if len(ip) > 0 {
-		if contains(hosts, ip) {
-			host = ip
-		} else {
-			log.Fatal("--ip=<value> doesn't present in `nodes`!")
+	knownHosts := strings.Split(strings.Trim(input, " "), " ")
+	var hosts []string
+	if len(args) > 0 {
+		hosts = make([]string, len(args))
+		for i :=range args {
+			if contains(knownHosts, args[i]) {
+				hosts[i] = args[i]
+			} else {
+				log.Fatal("--ip=<value> doesn't present in `nodes`!")
+			}
 		}
 	} else {
-		hostsWithNumbers := make(map[int]string, len(hosts))
-		for i := range hosts {
-			hostsWithNumbers[i] = hosts[i]
-			i++
-		}
-		log.Println("Please choose number of node from `nodes`")
-		host = inputFunc(hostsWithNumbers)
+		hosts = make([]string, 1)
+		hosts[0] = numberHostsFromNodesFile(knownHosts)
 	}
-	return host
+	return hosts
+}
+
+func numberHostsFromNodesFile(knownHosts []string) string{
+	hostsWithNumbers := make(map[int]string, len(knownHosts))
+	for i := range knownHosts {
+		hostsWithNumbers[i] = knownHosts[i]
+		i++
+	}
+	log.Println("Please choose number of node from `nodes`")
+	return inputFunc(hostsWithNumbers)
 }
 
 func inputFunc(hostsWithNumbers map[int]string) string {

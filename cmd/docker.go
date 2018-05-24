@@ -17,48 +17,61 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"log"
+	"golang.org/x/crypto/ssh"
 )
 
 const docker = "docker-ce"
 
 // dockerCmd represents the docker command
 var dockerCmd = &cobra.Command{
-	Use:   "docker",
+	Use:   "docker <arg1 arg2...> or not",
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("Starting docker installation...")
 		version := findDockerVersionFromClusterfile()
 		nodesFileEntry := readNodesFileIfExists()
-		host := takeHostFromFlagOrChooseFromNodesFile(nodesFileEntry)
+		hosts := takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)
 		config := findSshKeysAndInitConnection()
-		if checkDockerInstallation(host, version ,config) {
-			log.Fatal("Docker version " + version + " already installed!")
+		for _, value := range hosts {
+			go installDocker(value, version, config)
 		}
-		log.Println("Updating apt-get...")
-		sudoExecSshCommand(host, "apt-get update", config)
-		log.Println("Installing packages to allow apt to use a repository over HTTPS...")
-		sudoExecSshCommand(host, "apt-get -y install apt-transport-https ca-certificates curl "+
-			"software-properties-common", config)
-		//TODO don't forget auto-check
-		log.Println("Add Docker’s official GPG key")
-		execSshCommand(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
-		log.Println("Verify key")
-		log.Println(sudoExecSshCommand(host, "apt-key fingerprint 0EBFCD88", config))
-		log.Println("Adding repository")
-		sudoExecSshCommand(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
-			"$(lsb_release -cs) stable\"", config)
-		log.Println("Updating apt-get...")
-		sudoExecSshCommand(host, "apt-get update", config)
-		log.Println("Trying to install " + docker + " version " + version + "...")
-		sudoExecSshCommand(host, "apt-get -y install "+docker+"="+version, config)
-		log.Println("Checking installation...")
-		if checkDockerInstallation(host, version ,config) {
-			log.Println("Docker succesfully installed!")
-		} else {
-			log.Fatal("Can't install docker")
+		for range hosts {
+			res := <-channel
+			log.Println(res)
 		}
 	},
+}
+
+func installDocker(host, version string, config *ssh.ClientConfig) {
+	if checkDockerInstallation(host, version ,config) {
+		logWithPrefix(host, "Docker version " + version + " already installed!")
+		channel <- "already installed"
+		return
+	}
+	logWithPrefix(host, "Updating apt-get...")
+	sudoExecSshCommand(host, "apt-get update", config)
+	logWithPrefix(host, "Installing packages to allow apt to use a repository over HTTPS...")
+	sudoExecSshCommand(host, "apt-get -y install apt-transport-https ca-certificates curl "+
+		"software-properties-common", config)
+	//TODO don't forget auto-check
+	logWithPrefix(host, "Add Docker’s official GPG key")
+	execSshCommand(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
+	logWithPrefix(host, "Verify key")
+	logWithPrefix(host, sudoExecSshCommand(host, "apt-key fingerprint 0EBFCD88", config))
+	logWithPrefix(host, "Adding repository")
+	sudoExecSshCommand(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
+		"$(lsb_release -cs) stable\"", config)
+	logWithPrefix(host, "Updating apt-get...")
+	sudoExecSshCommand(host, "apt-get update", config)
+	logWithPrefix(host, "Trying to install " + docker + " version " + version + "...")
+	sudoExecSshCommand(host, "apt-get -y install "+docker+"="+version, config)
+	logWithPrefix(host, "Checking installation...")
+	if checkDockerInstallation(host, version ,config) {
+		channel <- "Docker succesfully installed!"
+	} else {
+		channel <- "Can't install docker"
+	}
 }
 
 func init() {
