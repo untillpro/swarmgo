@@ -1,0 +1,21 @@
+# Organization Parameters
+
+OrganizationName: <Your Organization Name>
+ClusterName: <Your Cluster Name>
+
+# This user will be created on each node and given sudo permissions
+ClusterUser: cluster
+
+# Key Locations
+
+PublickKey: ${HOME}/.ssh/$clusterName.pub
+PrivateKey: ${HOME}/.ssh/$clusterName
+
+# Software Versions
+
+Docker-ce: 17.12.0~ce-0~ubuntu
+Prometheus: prometheus-2.2.1.linux-amd64
+Grafana: grafana_5.1.2_amd64
+Zookeeper: zookeeper-3.4.12
+Traefik: https://github.com/containous/traefik/releases/download/v1.6.0/traefik_linux-amd64
+
