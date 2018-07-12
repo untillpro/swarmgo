@@ -15,36 +15,39 @@ import (
 	"log"
 	"os"
 	"strings"
+	"path/filepath"
+	"fmt"
 )
 
 const (
-	nodes    = "nodes"
-	userName = "cluster"
+	nodes = "nodes"
 )
 
-var channel  = make(chan string)
+var channel = make(chan string)
 
 // addNodeCmd represents the addNode command
 var addNodeCmd = &cobra.Command{
 	Use:   "add",
-	Short: "add <arg1 arg2 arg3 ...> all args must be valid hosts!",
-	Long:  `Add node with current IP to cluster and do some installations???`,
+	Short: "add <Alias1>=<1IP> <Alias2>=<IP2>",
+	Long:  `Add node with specified alias and current IP to cluster and config access with keys`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		readClusterfileIfExists()
+		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 		if len(args) == 0 {
 			log.Fatal("You must pass one or mode ip!")
 		}
 		publicKeyFile, privateKeyFile := findSshKeys()
+		fmt.Println("Enter password to crypt/decrypt you private key")
+		passToKey := waitUserInput()
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {
 			bitSize := 4096
-			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile)
+			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
 			CheckErr(err)
 		} else {
 			log.Println("Keys already exist")
 		}
 		log.Println("Checking if node already configured to use keys")
-		nodesFileName := appendChildToExecutablePath(nodes)
+		nodesFileName := filepath.Join(getCurrentDir(), nodes)
 		nodesFile, err := os.OpenFile(nodesFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		CheckErr(err)
 		defer nodesFile.Close()
@@ -66,8 +69,19 @@ var addNodeCmd = &cobra.Command{
 		}
 		log.Println("Connecting to remote servers root with password..")
 		for _, k := range args {
-			go func(host string) {
-				configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile)
+			func(host string) {
+				//passToRoot to user and key from input
+				var userName string
+				fmt.Println("input user name for host " + host)
+				for len(userName) == 0 {
+					fmt.Println("User name can't be empty!")
+					userName = strings.Trim(waitUserInput(), "\n ")
+				}
+				fmt.Println("input password for root user of " + host)
+				passToRoot := waitUserInput()
+				fmt.Println("input password for new user of " + host)
+				passToUser := waitUserInput()
+				configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRoot, passToUser, passToKey)
 				logWithPrefix(host, "Write host to nodes file")
 				if _, err = nodesFile.WriteString(host + "\n"); err != nil {
 					panic(err)
@@ -82,32 +96,27 @@ var addNodeCmd = &cobra.Command{
 	},
 }
 
-func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile string) {
-	logWithPrefix(host,"Host " + host)
-	logWithPrefix(host,"Connecting to remote servers root with password..")
+func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRoot, passToUser, passToKey string) {
+	logWithPrefix(host, "Host "+host)
+	logWithPrefix(host, "Connecting to remote servers root with password..")
 	sshConfig := &ssh.ClientConfig{
 		User:            "root",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		//pass password from args?
-		Auth: []ssh.AuthMethod{ssh.Password("pas")},
+		Auth: []ssh.AuthMethod{ssh.Password(passToRoot)},
 	}
-	//add userName "cluster"
 	execSshCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
-	logWithPrefix(host,"New user " + userName + " added")
-	//generate random password for userName cluster
-	pass := generateRandomString(32)
-	execSshCommand(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
+	logWithPrefix(host, "New user "+userName+" added")
+	execSshCommand(host, "echo \""+userName+":"+passToUser+"\" | sudo chpasswd", sshConfig)
 	execSshCommand(host, "usermod -aG sudo "+userName, sshConfig)
-	logWithPrefix(host,"Sudo permissions given to " + userName)
+	logWithPrefix(host, "Sudo permissions given to "+userName)
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		//pass password from args?
-		Auth: []ssh.AuthMethod{ssh.Password(pass)},
+		Auth:            []ssh.AuthMethod{ssh.Password(passToUser)},
 	}
-	logWithPrefix(host,"Relogin from root to " + userName)
+	logWithPrefix(host, "Relogin from root to "+userName)
 	sudoExecSshCommand(host, "passwd -l root", sshConfig)
-	logWithPrefix(host,"Root password disabled")
+	logWithPrefix(host, "Root password disabled")
 	execSshCommand(host, "mkdir ~/.ssh", sshConfig)
 	execSshCommand(host, "chmod 700 ~/.ssh", sshConfig)
 	execSshCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
@@ -116,15 +125,15 @@ func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile string) {
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
 	CheckErr(err)
 	execSshCommand(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
-	logWithPrefix(host,"Host public key added to remote server")
+	logWithPrefix(host, "Host public key added to remote server")
 	sudoExecSshCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
-	logWithPrefix(host,host + " password auth disabled")
-	sshConfig = initSshConnectionConfigWithPublicKeys(privateKeyFile)
+	logWithPrefix(host, host+" password auth disabled")
+	sshConfig = initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
 	sudoExecSshCommand(host, "ufw allow OpenSSH", sshConfig)
 	sudoExecSshCommand(host, "yes | sudo ufw enable", sshConfig)
 	sudoExecSshCommand(host, "ufw reload", sshConfig)
-	logWithPrefix(host,"Firewall reloaded to work with OpenSSH")
+	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
 	channel <- host + " done!"
 }
 

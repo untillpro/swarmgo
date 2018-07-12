@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"strings"
+	"fmt"
 )
 
 var mode string
@@ -28,18 +29,26 @@ var swarmCmd = &cobra.Command{
 	Use:   "swarm <arg> [#flag]",
 	Short: "Choose --mode= [manager, worker], empty means `init`",
 	Long:  `Initialize or joins to swarm for given node with default params`,
-	Args: cobra.MaximumNArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("Start swarm execution...")
 		version := findDockerVersionFromClusterfile()
-		nodesFileEntry := readNodesFileIfExists()
+		nodesFileEntry := readFileIfExists(nodes, "Need to add some nodes first")
 		var host string
 		if len(args) == 1 {
 			host = args[0]
 		} else {
 			host = takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)[0]
 		}
-		config := findSshKeysAndInitConnection()
+		fmt.Println("input password for public key")
+		passToKey := waitUserInput()
+		fmt.Println("input user name for host " + host)
+		var userName string
+		for len(userName) == 0 {
+			fmt.Print("User name can't be empty!")
+			userName = waitUserInput()
+		}
+		config := findSshKeysAndInitConnection(userName, passToKey)
 		if !checkDockerInstallation(host, version, config) {
 			log.Fatal("Need to install docker " + version + " before init swarm")
 		}
@@ -102,7 +111,7 @@ func joinToSwarm(host, file string, config *ssh.ClientConfig) {
 }
 
 func init() {
-	nodeCmd.AddCommand(swarmCmd)
+	rootCmd.AddCommand(swarmCmd)
 
 	// Here you will define your flags and configuration settings.
 

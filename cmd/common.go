@@ -80,10 +80,10 @@ func sudoExecSshCommand(host, cmd string, config *ssh.ClientConfig) string {
 	return execSshCommand(host, "sudo " + cmd, config)
 }
 
-func initSshConnectionConfigWithPublicKeys(privateKeyFile string) *ssh.ClientConfig {
+func initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, password string) *ssh.ClientConfig {
 	pemBytes, err := ioutil.ReadFile(privateKeyFile)
 	CheckErr(err)
-	signer, err := ssh.ParsePrivateKey(pemBytes)
+	signer, err := ssh.ParsePrivateKeyWithPassphrase(pemBytes, []byte(password))
 	CheckErr(err)
 	sshConfig := &ssh.ClientConfig{
 		User:            userName,
@@ -115,21 +115,11 @@ func contains(slice []string, find string) bool {
 	return false
 }
 
-func readClusterfileIfExists() []byte{
-	clusterFileEntry, err := ioutil.ReadFile(appendChildToExecutablePath(clusterFileName))
+func readFileIfExists(fileName, errorMessage string) []byte{
+	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), fileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Fatal("Need to use `swarmgo init` first!")
-		}
-	}
-	return clusterFileEntry
-}
-
-func readNodesFileIfExists() []byte{
-	nodesFileEntry, err := ioutil.ReadFile(appendChildToExecutablePath(nodes))
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Fatal("Need to add some nodes first!")
+			log.Fatal(errorMessage)
 		}
 	}
 	return nodesFileEntry
@@ -139,7 +129,7 @@ func waitUserInput() string {
 	buf := bufio.NewReader(os.Stdin)
 	input, err := buf.ReadString('\n')
 	CheckErr(err)
-	return input
+	return strings.Trim(input, "\n\r ")
 }
 
 func findSshKeys() (string, string) {
@@ -219,28 +209,28 @@ func numberHostsFromNodesFile(knownHosts []string) string{
 		i++
 	}
 	log.Println("Please choose number of node from `nodes`")
-	return inputFunc(hostsWithNumbers)
+	return inputFuncForHosts(hostsWithNumbers)
 }
 
-func inputFunc(hostsWithNumbers map[int]string) string {
+func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	b := new(bytes.Buffer)
 	for k, v := range hostsWithNumbers {
 		fmt.Fprintf(b, "%d : %s\n", k, v)
 	}
 	log.Println("\n" + b.String())
-	input := strings.Trim(waitUserInput(), "\n\r ")
+	input := waitUserInput()
 	convertedInput, err := strconv.Atoi(input)
 	CheckErr(err)
 	if value, ok := hostsWithNumbers[convertedInput]; ok {
 		return value
 	} else {
 		log.Println("Wrong number, specifys one of this!")
-		return inputFunc(hostsWithNumbers)
+		return inputFuncForHosts(hostsWithNumbers)
 	}
 }
 
 func findDockerVersionFromClusterfile() string{
-	clusterFileEntry := readClusterfileIfExists()
+	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 	productsAndVersions := parseFileBytesAsMap(clusterFileEntry)
 	version, ok := productsAndVersions[docker]
 	if !ok {
@@ -250,12 +240,12 @@ func findDockerVersionFromClusterfile() string{
 	return version
 }
 
-func findSshKeysAndInitConnection() *ssh.ClientConfig {
+func findSshKeysAndInitConnection(userName, passToKey string) *ssh.ClientConfig {
 	_, privateKeyFile := findSshKeys()
 	if !checkFileExistence(privateKeyFile) {
 		log.Fatal("Can't find private key to connect to remote server!")
 	}
-	return initSshConnectionConfigWithPublicKeys(privateKeyFile)
+	return initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
 }
 
 func substringAfterIncludeValue(value string, a string) string {
@@ -268,4 +258,10 @@ func substringAfterIncludeValue(value string, a string) string {
 		return ""
 	}
 	return value[adjustedPos:]
+}
+
+func getCurrentDir() string {
+	pwd, err := os.Getwd()
+	CheckErr(err)
+	return pwd
 }

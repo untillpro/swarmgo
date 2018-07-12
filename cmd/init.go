@@ -9,14 +9,28 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-	"strings"
 	"io/ioutil"
+	"path/filepath"
+	"github.com/mitchellh/go-homedir"
+	"gopkg.in/yaml.v2"
+	"log"
 )
 
-const clusterFileName  = "Clusterfile"
+const clusterFileName  = "clusterfile.yml"
+
+type ClusterFile struct {
+	OrganizationName string `yaml:"OrganizationName"`
+	ClusterName string `yaml:"ClusterName"`
+	ClusterUser string `yaml:"ClusterUser"`
+	PublicKey string `yaml:"PublicKey"`
+	PrivateKey string `yaml:"PrivateKey"`
+	Docker string `yaml:"Docker-ce"`
+	Prometheus string `yaml:"Prometheus"`
+	Grafana string `yaml:"Grafana"`
+	Zookeeper string `yaml:"Zookeeper"`
+	Traefik string `yaml:"Traefik"`
+}
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -25,23 +39,31 @@ var initCmd = &cobra.Command{
 	Long: `Initialize Clusterfile with list of used in project technologies and versions, in first version of swarmgo
 	products and versions was hardcoded in future release it will be configures with flags`,
 	Run: func(cmd *cobra.Command, args []string) {
-		clusterFile := appendChildToExecutablePath(clusterFileName)
+		clusterFile := filepath.Join(getCurrentDir(),clusterFileName)
 		if checkFileExistence(clusterFile) {
-			fmt.Println("Cluster already initialized!")
+			log.Println("Cluster already initialized!")
 			return
 		}
-		zookeeper := "zookeeper=zookeeper-3.4.12"
-		docker := "docker-ce=17.12.0~ce-0~ubuntu"
-		prometheus := "prometheus=prometheus-2.2.1.linux-amd64"
-		grafana := "grafana=grafana_5.1.2_amd64"
-		traefik := "traefik=https://github.com/containous/traefik/releases/download/v1.6.0/traefik_linux-amd64"
-		f := func(str ... string) string {
-			return strings.Join(str, "\n")
-		}
-		b := []byte(f(zookeeper, docker, prometheus, grafana, traefik))
-		err := ioutil.WriteFile(clusterFile, b, 0644)
+		home, err := homedir.Dir()
 		CheckErr(err)
-		fmt.Println("Successful initialization")
+		yourClusterName := `<Your cluster name>`
+		clusterFileEntry := ClusterFile{
+			"<Your organization name>",
+			yourClusterName,
+			"cluster",
+			filepath.Join(home, ".ssh/" + yourClusterName + ".pub"),
+			filepath.Join(home, ".ssh/" + yourClusterName),
+			"17.12.0~ce-0~ubuntu",
+			"prometheus-2.2.1.linux-amd64",
+			"grafana_5.1.2_amd64",
+			"zookeeper-3.4.12",
+			"https://github.com/containous/traefik/releases/download/v1.6.0/traefik_linux-amd64",
+		}
+		out, err := yaml.Marshal(&clusterFileEntry)
+		CheckErr(err)
+		err = ioutil.WriteFile(clusterFile, out, 0644)
+		CheckErr(err)
+		log.Println("Successful initialization")
 	},
 }
 

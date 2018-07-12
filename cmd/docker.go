@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"golang.org/x/crypto/ssh"
+	"fmt"
 )
 
 const docker = "docker-ce"
@@ -24,11 +25,26 @@ var dockerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Println("Starting docker installation...")
 		version := findDockerVersionFromClusterfile()
-		nodesFileEntry := readNodesFileIfExists()
+		nodesFileEntry := readFileIfExists(nodes, "Need to add some nodes first")
 		hosts := takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)
-		config := findSshKeysAndInitConnection()
+		fmt.Println("input password for public key")
+		passToKey := waitUserInput()
+		hostAndUserName := make(map[string]string)
+		for _,host := range hosts {
+			var userName string
+			fmt.Println("input user name for host " + host)
+			for len(userName) == 0 {
+				fmt.Print("User name can't be empty!")
+				userName = waitUserInput()
+			}
+			hostAndUserName[host] = userName
+		}
 		for _, value := range hosts {
-			go installDocker(value, version, config)
+			go func() {
+				userName := hostAndUserName[value]
+				config := findSshKeysAndInitConnection(userName, passToKey)
+				installDocker(value, version, config)
+			}()
 		}
 		for range hosts {
 			res := <-channel
@@ -69,7 +85,7 @@ func installDocker(host, version string, config *ssh.ClientConfig) {
 }
 
 func init() {
-	nodeCmd.AddCommand(dockerCmd)
+	rootCmd.AddCommand(dockerCmd)
 
 	// Here you will define your flags and configuration settings.
 

@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package inv
 
 import (
 	"golang.org/x/crypto/ssh"

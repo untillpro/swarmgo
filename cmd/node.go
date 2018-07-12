@@ -17,10 +17,10 @@ import (
 var nodeCmd = &cobra.Command{
 	Use:   "node",
 	Short: "Root command for nodes",
-	Long:  `Root command for nodes: add, docker, swarm`,
+	Long:  `Root command for nodes: add`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Specify operation! \n" +
-			"add <args>, docker <args>, swarm <arg> [#flag]")
+			"add <Alias1>=<IP1> <Alias2>=<IP2> ...")
 	},
 }
 
