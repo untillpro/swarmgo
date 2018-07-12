@@ -23,6 +23,10 @@ const (
 	nodes = "nodes"
 )
 
+type user struct {
+	userName, passToRoot, passToUser string
+}
+
 var channel = make(chan string)
 
 // addNodeCmd represents the addNode command
@@ -67,26 +71,30 @@ var addNodeCmd = &cobra.Command{
 		if len(args) == 0 {
 			log.Fatal("All passed hosts already configured to use keys")
 		}
-		log.Println("Connecting to remote servers root with password..")
-		for _, k := range args {
-			func(host string) {
+		hostAndUserName := make(map[string]user)
+		for _,host := range args {
+			var user user
+			fmt.Println("input user name for host " + host)
+			for len(user.userName) == 0 {
+				fmt.Println("User name can't be empty!")
+				user.userName = waitUserInput()
+			}
+			fmt.Println("input password for root user of " + host)
+			user.passToRoot = waitUserInput()
+			fmt.Println("input password for new user of " + host)
+			user.passToUser = waitUserInput()
+			hostAndUserName[host] = user
+		}
+		for key, value := range hostAndUserName {
+			go func(host string, value user) {
 				//passToRoot to user and key from input
-				var userName string
-				fmt.Println("input user name for host " + host)
-				for len(userName) == 0 {
-					fmt.Println("User name can't be empty!")
-					userName = strings.Trim(waitUserInput(), "\n ")
-				}
-				fmt.Println("input password for root user of " + host)
-				passToRoot := waitUserInput()
-				fmt.Println("input password for new user of " + host)
-				passToUser := waitUserInput()
-				configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRoot, passToUser, passToKey)
+				configHostToUseKeys(value.userName, host, publicKeyFile, privateKeyFile, value.passToRoot,
+					value.passToUser, passToKey)
 				logWithPrefix(host, "Write host to nodes file")
 				if _, err = nodesFile.WriteString(host + "\n"); err != nil {
 					panic(err)
 				}
-			}(k)
+			}(key, value)
 		}
 		//to wait all results
 		for range args {
