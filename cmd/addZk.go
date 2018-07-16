@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addZkCmd represents the addZk command
 var addZkCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Not implemented yet",
@@ -26,14 +25,4 @@ var addZkCmd = &cobra.Command{
 
 func init() {
 	zkCmd.AddCommand(addZkCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// addZkCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// addZkCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

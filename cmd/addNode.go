@@ -24,7 +24,7 @@ const (
 )
 
 type user struct {
-	userName, passToRoot, passToUser string
+	host, alias, userName, passToRoot, passToUser string
 }
 
 var channel = make(chan string)
@@ -37,9 +37,6 @@ var addNodeCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
-		if len(args) == 0 {
-			log.Fatal("You must pass one or mode ip!")
-		}
 		publicKeyFile, privateKeyFile := findSshKeys()
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
@@ -59,11 +56,11 @@ var addNodeCmd = &cobra.Command{
 		CheckErr(err)
 		userAndHost := strings.Split(string(fileText), "\n")
 		i := 0
-		for _, j := range args {
-			if contains(userAndHost, j) {
-				log.Println(j + " node already configured to use keys!")
+		for _, arg := range args {
+			if contains(userAndHost, arg) {
+				log.Println(arg + " node already configured to use keys!")
 			} else {
-				args[i] = j
+				args[i] = arg
 				i++
 			}
 		}
@@ -71,30 +68,32 @@ var addNodeCmd = &cobra.Command{
 		if len(args) == 0 {
 			log.Fatal("All passed hosts already configured to use keys")
 		}
-		hostAndUserName := make(map[string]user)
-		for _, host := range args {
+		users := make([]user, len(args))
+		for index, arg := range args {
 			var user user
-			fmt.Println("input user name for host " + host)
+			userAndAlias := strings.Split(arg, "=")
+			user.alias = userAndAlias[0]
+			user.host = userAndAlias[1]
+			fmt.Println("input user name for host " + user.host)
 			for len(user.userName) == 0 {
 				fmt.Println("User name can't be empty!")
 				user.userName = waitUserInput()
 			}
-			fmt.Println("input password for root user of " + host)
+			fmt.Println("input password for root user of " + user.host)
 			user.passToRoot = waitUserInput()
-			fmt.Println("input password for new user of " + host)
+			fmt.Println("input password for new user of " + user.host)
 			user.passToUser = waitUserInput()
-			hostAndUserName[host] = user
+			users[index] = user
 		}
-		for key, value := range hostAndUserName {
-			go func(host string, value user) {
+		for _, value := range users {
+			go func(user user) {
 				//passToRoot to user and key from input
-				configHostToUseKeys(value.userName, host, publicKeyFile, privateKeyFile, value.passToRoot,
-					value.passToUser, passToKey)
-				logWithPrefix(host, "Write host to nodes file")
-				if _, err = nodesFile.WriteString(host + "\n"); err != nil {
+				configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
+				logWithPrefix(user.host, "Write host to nodes file")
+				if _, err = nodesFile.WriteString(user.alias + "=" + user.host + "\n"); err != nil {
 					panic(err)
 				}
-			}(key, value)
+			}(value)
 		}
 		//to wait all results
 		for range args {
@@ -104,23 +103,25 @@ var addNodeCmd = &cobra.Command{
 	},
 }
 
-func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRoot, passToUser, passToKey string) {
+func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) {
+	host := user.host
+	userName := user.userName
 	logWithPrefix(host, "Host "+host)
 	logWithPrefix(host, "Connecting to remote servers root with password..")
 	sshConfig := &ssh.ClientConfig{
 		User:            "root",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.Password(passToRoot)},
+		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
 	execSshCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
 	logWithPrefix(host, "New user "+userName+" added")
-	execSshCommand(host, "echo \""+userName+":"+passToUser+"\" | sudo chpasswd", sshConfig)
+	execSshCommand(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
 	execSshCommand(host, "usermod -aG sudo "+userName, sshConfig)
 	logWithPrefix(host, "Sudo permissions given to "+userName)
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.Password(passToUser)},
+		Auth:            []ssh.AuthMethod{ssh.Password(user.passToUser)},
 	}
 	logWithPrefix(host, "Relogin from root to "+userName)
 	sudoExecSshCommand(host, "passwd -l root", sshConfig)
@@ -147,13 +148,4 @@ func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRo
 
 func init() {
 	nodeCmd.AddCommand(addNodeCmd)
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// addNodeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// addNodeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

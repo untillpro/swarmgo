@@ -31,7 +31,6 @@ var swarmCmd = &cobra.Command{
 	Long:  `Initialize or joins to swarm for given node with default params`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Start swarm execution...")
 		version := findDockerVersionFromClusterfile()
 		nodesFileEntry := readFileIfExists(nodes, "Need to add some nodes first")
 		var host string
@@ -40,7 +39,7 @@ var swarmCmd = &cobra.Command{
 		} else {
 			host = takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)[0]
 		}
-		fmt.Println("input password for public key")
+		fmt.Println("input password for private key")
 		passToKey := waitUserInput()
 		fmt.Println("input user name for host " + host)
 		var userName string
