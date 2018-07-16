@@ -12,8 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"golang.org/x/crypto/ssh"
-	"math/rand"
-	"time"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -23,20 +21,8 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"gopkg.in/yaml.v2"
 )
-
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func generateRandomString(length int) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
 
 func appendChildToExecutablePath(child string) string {
 	current, err := os.Executable()
@@ -181,10 +167,15 @@ func CheckErr(err error) {
 	}
 }
 
-func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string {
+func getNodesFromFileEntry(nodesFileEntry []byte) [] string {
 	re := regexp.MustCompile(`\r?\n`)
 	input := re.ReplaceAllString(string(nodesFileEntry), " ")
 	knownHosts := strings.Split(strings.Trim(input, " "), " ")
+	return knownHosts
+}
+
+func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string {
+	knownHosts := getNodesFromFileEntry(nodesFileEntry)
 	var hosts []string
 	if len(args) > 0 {
 		hosts = make([]string, len(args))
@@ -238,6 +229,14 @@ func findDockerVersionFromClusterfile() string {
 		log.Fatal("Can't find docker version from Clusterfile!")
 	}
 	return version
+}
+
+func unmarshalClusterYml() *ClusterFile {
+	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
+	clusterFileStruct := ClusterFile{}
+	err := yaml.Unmarshal(clusterFileEntry,&clusterFileStruct)
+	CheckErr(err)
+	return &clusterFileStruct
 }
 
 func findSshKeysAndInitConnection(userName, passToKey string) *ssh.ClientConfig {

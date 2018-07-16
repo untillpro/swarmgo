@@ -23,10 +23,9 @@ var dockerCmd = &cobra.Command{
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Starting docker installation...")
-		version := findDockerVersionFromClusterfile()
+		dockerVersion := unmarshalClusterYml().Docker
 		nodesFileEntry := readFileIfExists(nodes, "Need to add some nodes first")
-		hosts := takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry, args)
+		hosts := getNodesFromFileEntry(nodesFileEntry)
 		fmt.Println("input password for public key")
 		passToKey := waitUserInput()
 		hostAndUserName := make(map[string]string)
@@ -34,17 +33,16 @@ var dockerCmd = &cobra.Command{
 			var userName string
 			fmt.Println("input user name for host " + host)
 			for len(userName) == 0 {
-				fmt.Print("User name can't be empty!")
+				fmt.Println("User name can't be empty!")
 				userName = waitUserInput()
 			}
 			hostAndUserName[host] = userName
 		}
-		for _, value := range hosts {
-			go func() {
-				userName := hostAndUserName[value]
+		for key, value := range hostAndUserName {
+			go func(host string, userName string) {
 				config := findSshKeysAndInitConnection(userName, passToKey)
-				installDocker(value, version, config)
-			}()
+				installDocker(host, dockerVersion, config)
+			}(key, value)
 		}
 		for range hosts {
 			res := <-channel
@@ -64,11 +62,8 @@ func installDocker(host, version string, config *ssh.ClientConfig) {
 	logWithPrefix(host, "Installing packages to allow apt to use a repository over HTTPS...")
 	sudoExecSshCommand(host, "apt-get -y install apt-transport-https ca-certificates curl "+
 		"software-properties-common", config)
-	//TODO don't forget auto-check
 	logWithPrefix(host, "Add Docker’s official GPG key")
 	execSshCommand(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
-	logWithPrefix(host, "Verify key")
-	logWithPrefix(host, sudoExecSshCommand(host, "apt-key fingerprint 0EBFCD88", config))
 	logWithPrefix(host, "Adding repository")
 	sudoExecSshCommand(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
 		"$(lsb_release -cs) stable\"", config)
