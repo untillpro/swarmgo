@@ -77,7 +77,7 @@ func logWithPrefix(host, str string) {
 }
 
 func sudoExecSshCommand(host, cmd string, config *ssh.ClientConfig) string {
-	return execSshCommand(host, "sudo " + cmd, config)
+	return execSshCommand(host, "sudo "+cmd, config)
 }
 
 func initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, password string) *ssh.ClientConfig {
@@ -115,7 +115,7 @@ func contains(slice []string, find string) bool {
 	return false
 }
 
-func readFileIfExists(fileName, errorMessage string) []byte{
+func readFileIfExists(fileName, errorMessage string) []byte {
 	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), fileName))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -159,7 +159,7 @@ func checkDockerInstallation(host, version string, config *ssh.ClientConfig) boo
 	return strings.Contains(exit, trimmedVersion)
 }
 
-func checkSwarmExistence(host string, config *ssh.ClientConfig) bool{
+func checkSwarmExistence(host string, config *ssh.ClientConfig) bool {
 	defer func() {
 		//just catching stderr from ubuntu because `docker` is unknown command
 		recover()
@@ -181,14 +181,14 @@ func CheckErr(err error) {
 	}
 }
 
-func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string{
+func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string {
 	re := regexp.MustCompile(`\r?\n`)
 	input := re.ReplaceAllString(string(nodesFileEntry), " ")
 	knownHosts := strings.Split(strings.Trim(input, " "), " ")
 	var hosts []string
 	if len(args) > 0 {
 		hosts = make([]string, len(args))
-		for i :=range args {
+		for i := range args {
 			if contains(knownHosts, args[i]) {
 				hosts[i] = args[i]
 			} else {
@@ -202,7 +202,7 @@ func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string
 	return hosts
 }
 
-func numberHostsFromNodesFile(knownHosts []string) string{
+func numberHostsFromNodesFile(knownHosts []string) string {
 	hostsWithNumbers := make(map[int]string, len(knownHosts))
 	for i := range knownHosts {
 		hostsWithNumbers[i] = knownHosts[i]
@@ -229,7 +229,7 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	}
 }
 
-func findDockerVersionFromClusterfile() string{
+func findDockerVersionFromClusterfile() string {
 	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 	productsAndVersions := parseFileBytesAsMap(clusterFileEntry)
 	version, ok := productsAndVersions[docker]

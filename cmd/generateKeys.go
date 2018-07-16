@@ -64,7 +64,7 @@ func generatePublicKey(privateKey *rsa.PublicKey) []byte {
 
 // writePemToFile writes keys to a file
 func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
-	folder,_ := filepath.Split(saveFileTo)
+	folder, _ := filepath.Split(saveFileTo)
 	os.MkdirAll(folder, os.ModePerm)
 	err := ioutil.WriteFile(saveFileTo, keyBytes, 0600)
 	if err != nil {
@@ -75,7 +75,7 @@ func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
 }
 
 // generate keys and write them to file, can return error
-func generateKeysAndWriteToFile(bitSize int, privateKeyFile ,publicKeyFile, password string) error {
+func generateKeysAndWriteToFile(bitSize int, privateKeyFile, publicKeyFile, password string) error {
 	privateKey, err := generatePrivateKey(bitSize)
 	if err != nil {
 		log.Fatal(err.Error())

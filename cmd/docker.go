@@ -30,7 +30,7 @@ var dockerCmd = &cobra.Command{
 		fmt.Println("input password for public key")
 		passToKey := waitUserInput()
 		hostAndUserName := make(map[string]string)
-		for _,host := range hosts {
+		for _, host := range hosts {
 			var userName string
 			fmt.Println("input user name for host " + host)
 			for len(userName) == 0 {
@@ -54,8 +54,8 @@ var dockerCmd = &cobra.Command{
 }
 
 func installDocker(host, version string, config *ssh.ClientConfig) {
-	if checkDockerInstallation(host, version ,config) {
-		logWithPrefix(host, "Docker version " + version + " already installed!")
+	if checkDockerInstallation(host, version, config) {
+		logWithPrefix(host, "Docker version "+version+" already installed!")
 		channel <- "already installed"
 		return
 	}
@@ -74,10 +74,10 @@ func installDocker(host, version string, config *ssh.ClientConfig) {
 		"$(lsb_release -cs) stable\"", config)
 	logWithPrefix(host, "Updating apt-get...")
 	sudoExecSshCommand(host, "apt-get update", config)
-	logWithPrefix(host, "Trying to install " + docker + " version " + version + "...")
+	logWithPrefix(host, "Trying to install "+docker+" version "+version+"...")
 	sudoExecSshCommand(host, "apt-get -y install "+docker+"="+version, config)
 	logWithPrefix(host, "Checking installation...")
-	if checkDockerInstallation(host, version ,config) {
+	if checkDockerInstallation(host, version, config) {
 		channel <- "Docker succesfully installed!"
 	} else {
 		channel <- "Can't install docker"

@@ -17,19 +17,19 @@ import (
 	"log"
 )
 
-const clusterFileName  = "clusterfile.yml"
+const clusterFileName = "clusterfile.yml"
 
 type ClusterFile struct {
 	OrganizationName string `yaml:"OrganizationName"`
-	ClusterName string `yaml:"ClusterName"`
-	ClusterUser string `yaml:"ClusterUser"`
-	PublicKey string `yaml:"PublicKey"`
-	PrivateKey string `yaml:"PrivateKey"`
-	Docker string `yaml:"Docker-ce"`
-	Prometheus string `yaml:"Prometheus"`
-	Grafana string `yaml:"Grafana"`
-	Zookeeper string `yaml:"Zookeeper"`
-	Traefik string `yaml:"Traefik"`
+	ClusterName      string `yaml:"ClusterName"`
+	ClusterUser      string `yaml:"ClusterUser"`
+	PublicKey        string `yaml:"PublicKey"`
+	PrivateKey       string `yaml:"PrivateKey"`
+	Docker           string `yaml:"Docker-ce"`
+	Prometheus       string `yaml:"Prometheus"`
+	Grafana          string `yaml:"Grafana"`
+	Zookeeper        string `yaml:"Zookeeper"`
+	Traefik          string `yaml:"Traefik"`
 }
 
 // initCmd represents the init command
@@ -39,7 +39,7 @@ var initCmd = &cobra.Command{
 	Long: `Initialize Clusterfile with list of used in project technologies and versions, in first version of swarmgo
 	products and versions was hardcoded in future release it will be configures with flags`,
 	Run: func(cmd *cobra.Command, args []string) {
-		clusterFile := filepath.Join(getCurrentDir(),clusterFileName)
+		clusterFile := filepath.Join(getCurrentDir(), clusterFileName)
 		if checkFileExistence(clusterFile) {
 			log.Println("Cluster already initialized!")
 			return
@@ -51,8 +51,8 @@ var initCmd = &cobra.Command{
 			"<Your organization name>",
 			yourClusterName,
 			"cluster",
-			filepath.Join(home, ".ssh/" + yourClusterName + ".pub"),
-			filepath.Join(home, ".ssh/" + yourClusterName),
+			filepath.Join(home, ".ssh/"+yourClusterName+".pub"),
+			filepath.Join(home, ".ssh/"+yourClusterName),
 			"17.12.0~ce-0~ubuntu",
 			"prometheus-2.2.1.linux-amd64",
 			"grafana_5.1.2_amd64",

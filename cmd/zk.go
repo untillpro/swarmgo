@@ -18,7 +18,7 @@ import (
 var zkCmd = &cobra.Command{
 	Use:   "zk",
 	Short: "Not implemented yet",
-	Long: `Not implemented yet`,
+	Long:  `Not implemented yet`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Not implemented yet")
 	},

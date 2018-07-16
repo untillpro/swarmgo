@@ -72,7 +72,7 @@ var addNodeCmd = &cobra.Command{
 			log.Fatal("All passed hosts already configured to use keys")
 		}
 		hostAndUserName := make(map[string]user)
-		for _,host := range args {
+		for _, host := range args {
 			var user user
 			fmt.Println("input user name for host " + host)
 			for len(user.userName) == 0 {
@@ -110,7 +110,7 @@ func configHostToUseKeys(userName, host, publicKeyFile, privateKeyFile, passToRo
 	sshConfig := &ssh.ClientConfig{
 		User:            "root",
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth: []ssh.AuthMethod{ssh.Password(passToRoot)},
+		Auth:            []ssh.AuthMethod{ssh.Password(passToRoot)},
 	}
 	execSshCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
 	logWithPrefix(host, "New user "+userName+" added")
