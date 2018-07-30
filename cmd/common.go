@@ -17,7 +17,6 @@ import (
 	"strings"
 	"bufio"
 	"github.com/mitchellh/go-homedir"
-	"regexp"
 	"bytes"
 	"fmt"
 	"strconv"
@@ -46,16 +45,22 @@ func checkFileExistence(clusterFile string) bool {
 func execSshCommand(host, cmd string, config *ssh.ClientConfig) string {
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	CheckErr(err)
-	session, err := conn.NewSession()
-	CheckErr(err)
-	defer session.Close()
-
-	bs, err := session.CombinedOutput(cmd)
-
+	bs, err := execSshCommandWithoutPanic(cmd, conn)
 	if err != nil {
 		panic(string(bs))
 	}
 	return string(bs)
+}
+
+func execSshCommandWithoutPanic(cmd string, conn *ssh.Client) (string, error) {
+	session, err := conn.NewSession()
+	CheckErr(err)
+	defer session.Close()
+	bs, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return string(bs), err
+	}
+	return string(bs), nil
 }
 
 func logWithPrefix(host, str string) {
@@ -63,7 +68,7 @@ func logWithPrefix(host, str string) {
 }
 
 func redirectLogs(child string) {
-	f, err := os.OpenFile(child + ".log", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile(child+".log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -88,20 +93,16 @@ func initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, password st
 	return sshConfig
 }
 
-func parseFileBytesAsMap(file []byte) map[string]string {
-	pav := strings.Split(string(file), "\n")
-	if len(pav) == 1 && pav[0] == "" {
-		return make(map[string]string, 1)
+func contains(slice []string, find string) bool {
+	for _, a := range slice {
+		if a == find {
+			return true
+		}
 	}
-	structs := make(map[string]string, len(pav))
-	for i := range pav {
-		arr := strings.Split(pav[i], "=")
-		structs[arr[0]] = arr[1]
-	}
-	return structs
+	return false
 }
 
-func contains(slice []string, find string) bool {
+func containsNode(slice []Node, find Node) bool {
 	for _, a := range slice {
 		if a == find {
 			return true
@@ -154,16 +155,6 @@ func checkDockerInstallation(host, version string, config *ssh.ClientConfig) boo
 	return strings.Contains(exit, trimmedVersion)
 }
 
-func checkSwarmExistence(host string, config *ssh.ClientConfig) bool {
-	defer func() {
-		//just catching stderr from ubuntu because `docker` is unknown command
-		recover()
-	}()
-	exit := execSshCommand(host, "docker node ls | echo $?", config)
-	converted := convertStringToInt(exit)
-	return converted == 0
-}
-
 func convertStringToInt(s string) int {
 	convertExit, err := strconv.Atoi(strings.TrimSuffix(s, "\n"))
 	CheckErr(err)
@@ -176,39 +167,25 @@ func CheckErr(err error) {
 	}
 }
 
-func getNodesFromFileEntry(nodesFileEntry []byte) [] string {
-	re := regexp.MustCompile(`\r?\n`)
-	input := re.ReplaceAllString(string(nodesFileEntry), " ")
-	knownHosts := strings.Split(strings.Trim(input, " "), " ")
-	return knownHosts
+func getNodesFromYml(parentFolderName string) []Node {
+	nodesFileName := filepath.Join(parentFolderName, nodesFileName)
+	nodesFile, err := os.OpenFile(nodesFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	CheckErr(err)
+	nodesFromYaml := make([]Node, 0, 5)
+	fileEntry, err := ioutil.ReadAll(nodesFile)
+	CheckErr(err)
+	err = yaml.Unmarshal(fileEntry, &nodesFromYaml)
+	CheckErr(err)
+	return nodesFromYaml
 }
 
-func takeHostsFromArgsOrChooseFromNodesFile(nodesFileEntry []byte, args []string) []string {
-	knownHosts := getNodesFromFileEntry(nodesFileEntry)
-	var hosts []string
-	if len(args) > 0 {
-		hosts = make([]string, len(args))
-		for i := range args {
-			if contains(knownHosts, args[i]) {
-				hosts[i] = args[i]
-			} else {
-				log.Fatal("--ip=<value> doesn't present in `nodes`!")
-			}
-		}
-	} else {
-		hosts = make([]string, 1)
-		hosts[0] = numberHostsFromNodesFile(knownHosts)
-	}
-	return hosts
-}
-
-func numberHostsFromNodesFile(knownHosts []string) string {
-	hostsWithNumbers := make(map[int]string, len(knownHosts))
-	for i := range knownHosts {
-		hostsWithNumbers[i] = knownHosts[i]
+func numberHostsFromNodesFile(nodesFromYml []Node) string {
+	hostsWithNumbers := make(map[int]string, len(nodesFromYml))
+	for i := range nodesFromYml {
+		hostsWithNumbers[i] = nodesFromYml[i].Alias
 		i++
 	}
-	log.Println("Please choose number of node from `nodes`")
+	log.Println("Please choose number of node from `nodesFileName`")
 	return inputFuncForHosts(hostsWithNumbers)
 }
 
@@ -219,8 +196,7 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	}
 	log.Println("\n" + b.String())
 	input := waitUserInput()
-	convertedInput, err := strconv.Atoi(input)
-	CheckErr(err)
+	convertedInput := convertStringToInt(input)
 	if value, ok := hostsWithNumbers[convertedInput]; ok {
 		return value
 	} else {
@@ -229,21 +205,10 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	}
 }
 
-func findDockerVersionFromClusterfile() string {
-	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
-	productsAndVersions := parseFileBytesAsMap(clusterFileEntry)
-	version, ok := productsAndVersions[docker]
-	if !ok {
-		//TODO maybe install latest?
-		log.Fatal("Can't find docker version from Clusterfile!")
-	}
-	return version
-}
-
 func unmarshalClusterYml() *ClusterFile {
 	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 	clusterFileStruct := ClusterFile{}
-	err := yaml.Unmarshal(clusterFileEntry,&clusterFileStruct)
+	err := yaml.Unmarshal(clusterFileEntry, &clusterFileStruct)
 	CheckErr(err)
 	return &clusterFileStruct
 }

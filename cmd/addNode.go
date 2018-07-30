@@ -13,21 +13,28 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
-	"path/filepath"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"path/filepath"
 )
 
+type SwarmMode int
+
 const (
-	nodes = "nodes"
+	nodesFileName           = "nodes.yml"
+	worker        SwarmMode = iota
+	manager
+	leader
 )
 
 type user struct {
 	host, alias, userName, passToRoot, passToUser string
 }
-
-var channel = make(chan string)
+type Node struct {
+	Host, Alias, DockerVersion string
+	SwarmMode                  SwarmMode
+}
 
 // addNodeCmd represents the addNode command
 var addNodeCmd = &cobra.Command{
@@ -48,16 +55,14 @@ var addNodeCmd = &cobra.Command{
 			log.Println("Keys already exist")
 		}
 		log.Println("Checking if node already configured to use keys")
-		nodesFileName := filepath.Join(getCurrentDir(), nodes)
-		nodesFile, err := os.OpenFile(nodesFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-		CheckErr(err)
-		defer nodesFile.Close()
-		fileText, err := ioutil.ReadAll(nodesFile)
-		CheckErr(err)
-		userAndHost := strings.Split(string(fileText), "\n")
+		nodesFromYaml := getNodesFromYml(getCurrentDir())
+		hosts := make([]string, len(nodesFromYaml))
+		for index, node := range nodesFromYaml {
+			hosts[index] = node.Alias + "=" + node.Host
+		}
 		i := 0
 		for _, arg := range args {
-			if contains(userAndHost, arg) {
+			if contains(hosts, arg) {
 				log.Println(arg + " node already configured to use keys!")
 			} else {
 				args[i] = arg
@@ -85,21 +90,28 @@ var addNodeCmd = &cobra.Command{
 			user.passToUser = waitUserInput()
 			users[index] = user
 		}
+		nodesChannel := make(chan Node)
 		for _, value := range users {
 			go func(user user) {
 				//passToRoot to user and key from input
 				configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
-				logWithPrefix(user.host, "Write host to nodes file")
-				if _, err = nodesFile.WriteString(user.alias + "=" + user.host + "\n"); err != nil {
-					panic(err)
+				node := Node{
+					Host:  user.host,
+					Alias: user.alias,
 				}
+				nodesChannel <- node
 			}(value)
 		}
-		//to wait all results
+		nodes := make([]Node, 0, len(args))
 		for range args {
-			res := <-channel
-			log.Println(res)
+			nodes = append(nodes, <-nodesChannel)
 		}
+		close(nodesChannel)
+		marshaledNode, err := yaml.Marshal(&nodes)
+		CheckErr(err)
+		nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
+		err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
+		CheckErr(err)
 	},
 }
 
@@ -143,7 +155,6 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	sudoExecSshCommand(host, "yes | sudo ufw enable", sshConfig)
 	sudoExecSshCommand(host, "ufw reload", sshConfig)
 	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
-	channel <- host + " done!"
 }
 
 func init() {

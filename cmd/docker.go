@@ -10,10 +10,15 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"log"
 	"golang.org/x/crypto/ssh"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"log"
+	"io/ioutil"
+	"path/filepath"
 )
+
+var channelForNodes = make(chan Node)
 
 const docker = "docker-ce"
 
@@ -24,37 +29,62 @@ var dockerCmd = &cobra.Command{
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
 		dockerVersion := unmarshalClusterYml().Docker
-		nodesFileEntry := readFileIfExists(nodes, "Need to add some nodes first")
-		hosts := getNodesFromFileEntry(nodesFileEntry)
-		fmt.Println("input password for public key")
+		nodesFromYaml := getNodesFromYml(getCurrentDir())
+		if len(nodesFromYaml) == 0 {
+			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+		}
+		log.Println("Checking docker version " + dockerVersion + " already installed")
+		alreadyInstalled := make([]Node, 0, len(nodesFromYaml))
+		notInstalled := make([]Node, 0, len(nodesFromYaml))
+		for _, node := range nodesFromYaml {
+			if dockerVersion == node.DockerVersion {
+				log.Println("Docker already installer on " + node.Host)
+				alreadyInstalled = append(alreadyInstalled, node)
+			} else {
+				notInstalled = append(notInstalled, node)
+			}
+		}
+		if len(notInstalled) == 0 {
+			log.Fatal("Docker version " + dockerVersion + " already installed on all nodesFileName")
+		}
+		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
-		hostAndUserName := make(map[string]string)
-		for _, host := range hosts {
+		nodeAndUserName := make(map[Node]string)
+		for _, node := range notInstalled {
 			var userName string
-			fmt.Println("input user name for host " + host)
+			fmt.Println("input user name for host " + node.Host)
 			for len(userName) == 0 {
 				fmt.Println("User name can't be empty!")
 				userName = waitUserInput()
 			}
-			hostAndUserName[host] = userName
+			nodeAndUserName[node] = userName
 		}
-		for key, value := range hostAndUserName {
-			go func(host string, userName string) {
+		for key, value := range nodeAndUserName {
+			go func(node Node, userName string) {
 				config := findSshKeysAndInitConnection(userName, passToKey)
-				installDocker(host, dockerVersion, config)
+				installDocker(node, dockerVersion, config)
 			}(key, value)
 		}
-		for range hosts {
-			res := <-channel
-			log.Println(res)
+		nodes := make([]Node, 0, len(args))
+		for range nodeAndUserName {
+			nodes = append(nodes,<-channelForNodes)
 		}
+		nodes = append(nodes, alreadyInstalled...)
+		close(channelForNodes)
+		marshaledNode, err := yaml.Marshal(&nodes)
+		CheckErr(err)
+		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
+		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
+		CheckErr(err)
 	},
 }
 
-func installDocker(host, version string, config *ssh.ClientConfig) {
+func installDocker(node Node, version string, config *ssh.ClientConfig) {
+	host := node.Host
 	if checkDockerInstallation(host, version, config) {
 		logWithPrefix(host, "Docker version "+version+" already installed!")
-		channel <- "already installed"
+		node.DockerVersion = version
+		channelForNodes <- node
 		return
 	}
 	logWithPrefix(host, "Updating apt-get...")
@@ -73,9 +103,13 @@ func installDocker(host, version string, config *ssh.ClientConfig) {
 	sudoExecSshCommand(host, "apt-get -y install "+docker+"="+version, config)
 	logWithPrefix(host, "Checking installation...")
 	if checkDockerInstallation(host, version, config) {
-		channel <- "Docker succesfully installed!"
+		logWithPrefix(host, "Docker successfully installed")
+		node.DockerVersion = version
+		channelForNodes <- node
 	} else {
-		channel <- "Can't install docker"
+		logWithPrefix(host, "Can't install docker")
+		node.DockerVersion = ""
+		channelForNodes <- node
 	}
 }
 
