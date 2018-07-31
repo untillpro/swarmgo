@@ -43,6 +43,14 @@ var swarmCmd = &cobra.Command{
 			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
 		clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
+		if clusterLeaderNode == (Node{}) {
+			if !mode {
+				log.Fatal("Need to specify -manager to init swarm!")
+			}
+			if len(args) == 0 {
+				log.Fatal("Need to pass at least one alias to init swarm!")
+			}
+		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		nodeAndUserName := make(map[Node]string)
@@ -112,14 +120,7 @@ func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []stri
 	passToKey string) (Node, map[Node]string) {
 	log.Println("Need to initiate swarm leader")
 	var alias string
-	if !mode {
-		log.Fatal("Need to specify -manager to init swarm!")
-	}
-	if len(args) == 0 {
-		log.Fatal("Need to pass at least one alias to init swarm!")
-	} else {
-		alias = args[0]
-	}
+	alias = args[0]
 	node := findNodeByAliasFromNodesYml(alias, nodesFromYml)
 	host := node.Host
 	config := findSshKeysAndInitConnection(nodeAndUserName[node], passToKey)
