@@ -29,6 +29,7 @@ var swarmCmd = &cobra.Command{
 	Long: `swarm with -m installs swarm manager nodes on given Aliases, swarm installs swarm workers on other nodes in
  cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
+		clusterFile := unmarshalClusterYml()
 		if mode && len(args) == 0 {
 			//if we want to choose alias interactive
 			//alias = chooseHostFromNodesYml(getCurrentDir())
@@ -78,12 +79,12 @@ var swarmCmd = &cobra.Command{
 		}
 		var node Node
 		if clusterLeaderNode == (Node{}) {
-			node, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, passToKey)
+			node, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, clusterFile.ClusterName, passToKey)
 			nodeHostAndNode[node.Host] = node
 		}
 		for key, value := range nodeAndUserName {
 			go func(node Node, userName, passToKey string) {
-				joinToSwarm(node, clusterLeaderNode.Host, userName, passToKey)
+				joinToSwarm(node, clusterLeaderNode.Host, userName, passToKey, clusterFile.ClusterName)
 			}(key, value, passToKey)
 		}
 		for  key := range nodeAndUserName {
@@ -117,13 +118,13 @@ func reloadUfwAndDocker(host string, config *ssh.ClientConfig) {
 }
 
 func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []string,
-	passToKey string) (Node, map[Node]string) {
+	passToKey, clusterName string) (Node, map[Node]string) {
 	log.Println("Need to initiate swarm leader")
 	var alias string
 	alias = args[0]
 	node := findNodeByAliasFromNodesYml(alias, nodesFromYml)
 	host := node.Host
-	config := findSshKeysAndInitConnection(nodeAndUserName[node], passToKey)
+	config := findSshKeysAndInitConnection(clusterName, nodeAndUserName[node], passToKey)
 	configUfwToWorkInSwarmMode(host, config)
 	log.Println("Starting swarm initialization...")
 	sudoExecSshCommand(host, "ufw allow 2377/tcp", config)
@@ -180,9 +181,9 @@ func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) {
 	logWithPrefix(host, "Ufw configured")
 }
 
-func joinToSwarm(node Node, leaderHost, userName, passToKey string) {
+func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string) {
 	host := node.Host
-	config := findSshKeysAndInitConnection(userName, passToKey)
+	config := findSshKeysAndInitConnection(clusterName, userName, passToKey)
 	configUfwToWorkInSwarmMode(host, config)
 	var token string
 	if mode {

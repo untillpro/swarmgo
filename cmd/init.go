@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"path/filepath"
-	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v2"
 	"log"
 )
@@ -23,8 +22,8 @@ type ClusterFile struct {
 	OrganizationName string `yaml:"OrganizationName"`
 	ClusterName      string `yaml:"ClusterName"`
 	ClusterUser      string `yaml:"ClusterUser"`
-	PublicKey        string `yaml:"PublicKey"`
-	PrivateKey       string `yaml:"PrivateKey"`
+	//PublicKey        string `yaml:"PublicKey"`
+	//PrivateKey       string `yaml:"PrivateKey"`
 	Docker           string `yaml:"Docker-ce"`
 	Prometheus       string `yaml:"Prometheus"`
 	Grafana          string `yaml:"Grafana"`
@@ -44,15 +43,15 @@ var initCmd = &cobra.Command{
 			log.Println("Cluster already initialized!")
 			return
 		}
-		home, err := homedir.Dir()
-		CheckErr(err)
+		//home, err := homedir.Dir()
+		//CheckErr(err)
 		yourClusterName := `<Your cluster name>`
 		clusterFileEntry := ClusterFile{
 			"<Your organization name>",
 			yourClusterName,
 			"cluster",
-			filepath.Join(home, ".ssh/"+yourClusterName+".pub"),
-			filepath.Join(home, ".ssh/"+yourClusterName),
+			//filepath.Join(home, ".ssh/"+yourClusterName+".pub"),
+			//filepath.Join(home, ".ssh/"+yourClusterName),
 			"17.12.0~ce-0~ubuntu",
 			"prometheus-2.2.1.linux-amd64",
 			"grafana_5.1.2_amd64",

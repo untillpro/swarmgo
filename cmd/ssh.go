@@ -31,6 +31,7 @@ var sshCmd = &cobra.Command{
 password before you don't use command exit'`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		clusterFile := unmarshalClusterYml()
 		readFileIfExists(nodesFileName, "Need to add some nodesFileName first")
 		nodesFromYaml := getNodesFromYml(getCurrentDir())
 		var host string
@@ -47,7 +48,7 @@ password before you don't use command exit'`,
 		passToKey := waitUserInput()
 		fmt.Println("Enter username")
 		userName := waitUserInput()
-		sshConfig := findSshKeysAndInitConnection(userName, passToKey)
+		sshConfig := findSshKeysAndInitConnection(clusterFile.ClusterName, userName, passToKey)
 		fmt.Println("Now you can execute commands")
 		conn, err := ssh.Dial("tcp", host+":22", sshConfig)
 		CheckErr(err)

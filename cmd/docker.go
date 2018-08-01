@@ -28,12 +28,12 @@ var dockerCmd = &cobra.Command{
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
-		dockerVersion := unmarshalClusterYml().Docker
+		clusterFile := unmarshalClusterYml()
+		dockerVersion := clusterFile.Docker
 		nodesFromYaml := getNodesFromYml(getCurrentDir())
 		if len(nodesFromYaml) == 0 {
 			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
-		log.Println("Checking docker version " + dockerVersion + " already installed")
 		alreadyInstalled := make([]Node, 0, len(nodesFromYaml))
 		notInstalled := make([]Node, 0, len(nodesFromYaml))
 		for _, node := range nodesFromYaml {
@@ -61,7 +61,7 @@ var dockerCmd = &cobra.Command{
 		}
 		for key, value := range nodeAndUserName {
 			go func(node Node, userName string) {
-				config := findSshKeysAndInitConnection(userName, passToKey)
+				config := findSshKeysAndInitConnection(clusterFile.ClusterName, userName, passToKey)
 				installDocker(node, dockerVersion, config)
 			}(key, value)
 		}

@@ -44,7 +44,11 @@ var addNodeCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
-		publicKeyFile, privateKeyFile := findSshKeys()
+		clusterFile := unmarshalClusterYml()
+		if clusterFile.ClusterName == "<Your cluster name>" {
+			log.Fatal("Change <Your cluster name> in clusterfile.yml!")
+		}
+		publicKeyFile, privateKeyFile := findSshKeys(clusterFile.ClusterName)
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {

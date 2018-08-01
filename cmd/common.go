@@ -128,16 +128,16 @@ func waitUserInput() string {
 	return strings.Trim(input, "\n\r ")
 }
 
-func findSshKeys() (string, string) {
-	publicKeyName := ".ssh/id_rsa.pub"
-	privateKeyName := ".ssh/id_rsa"
+func findSshKeys(clusterName string) (string, string) {
+	publicKeyName := ".ssh/" + clusterName + ".pub"
+	privateKeyName := ".ssh/" + clusterName
 	home, err := homedir.Dir()
 	CheckErr(err)
 	var publicKeyFile string
 	var privateKeyFile string
 	if len(home) > 0 {
-		publicKeyFile = filepath.Join(home, ".ssh/id_rsa.pub")
-		privateKeyFile = filepath.Join(home, ".ssh/id_rsa")
+		publicKeyFile = filepath.Join(home, publicKeyName)
+		privateKeyFile = filepath.Join(home, privateKeyName)
 	} else {
 		publicKeyFile = appendChildToExecutablePath(publicKeyName)
 		privateKeyFile = appendChildToExecutablePath(privateKeyName)
@@ -213,8 +213,8 @@ func unmarshalClusterYml() *ClusterFile {
 	return &clusterFileStruct
 }
 
-func findSshKeysAndInitConnection(userName, passToKey string) *ssh.ClientConfig {
-	_, privateKeyFile := findSshKeys()
+func findSshKeysAndInitConnection(clusterName, userName, passToKey string) *ssh.ClientConfig {
+	_, privateKeyFile := findSshKeys(clusterName)
 	if !checkFileExistence(privateKeyFile) {
 		log.Fatal("Can't find private key to connect to remote server!")
 	}
