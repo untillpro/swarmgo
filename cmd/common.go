@@ -67,13 +67,14 @@ func logWithPrefix(host, str string) {
 	log.Println(host + " : " + str)
 }
 
-func redirectLogs(child string) {
-	f, err := os.OpenFile(child+".log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
+func redirectLogs() *os.File{
+	parent := filepath.Join(getCurrentDir(),"logs")
+	err := os.MkdirAll(parent, os.ModePerm)
+	CheckErr(err)
+	f, err := os.OpenFile(filepath.Join(parent,"log.log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+	CheckErr(err)
 	log.SetOutput(f)
+	return f
 }
 
 func sudoExecSshCommand(host, cmd string, config *ssh.ClientConfig) string {

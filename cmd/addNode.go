@@ -43,6 +43,10 @@ var addNodeCmd = &cobra.Command{
 	Long:  `Add node with specified alias and current IP to cluster and config access with keys`,
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		if logs {
+			f := redirectLogs()
+			defer f.Close()
+		}
 		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
 		if clusterFile.ClusterName == "<Your cluster name>" {

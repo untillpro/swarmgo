@@ -38,6 +38,10 @@ var initCmd = &cobra.Command{
 	Long: `Initialize Clusterfile with list of used in project technologies and versions, in first version of swarmgo
 	products and versions was hardcoded in future release it will be configures with flags`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if logs {
+			f := redirectLogs()
+			defer f.Close()
+		}
 		clusterFile := filepath.Join(getCurrentDir(), clusterFileName)
 		if checkFileExistence(clusterFile) {
 			log.Println("Cluster already initialized!")

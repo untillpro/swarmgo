@@ -29,6 +29,10 @@ var swarmCmd = &cobra.Command{
 	Long: `swarm with -m installs swarm manager nodes on given Aliases, swarm installs swarm workers on other nodes in
  cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if logs {
+			f := redirectLogs()
+			defer f.Close()
+		}
 		clusterFile := unmarshalClusterYml()
 		if mode && len(args) == 0 {
 			//if we want to choose alias interactive
@@ -79,7 +83,7 @@ var swarmCmd = &cobra.Command{
 		}
 		var node Node
 		if clusterLeaderNode == (Node{}) {
-			node, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, clusterFile.ClusterName, passToKey)
+			node, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, passToKey, clusterFile.ClusterName)
 			nodeHostAndNode[node.Host] = node
 		}
 		for key, value := range nodeAndUserName {
@@ -203,6 +207,5 @@ func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string)
 
 func init() {
 	rootCmd.AddCommand(swarmCmd)
-
 	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
 }
