@@ -18,3 +18,8 @@
 # Logs
 
 - Logs are written to `./logs` folder
+
+# Links
+
+- https://jmaitrehenry.ca/2017/12/15/using-traefik-with-docker-swarm-and-consul-as-your-load-balancer/
+ 
