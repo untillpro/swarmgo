@@ -9,14 +9,14 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"log"
-	"golang.org/x/crypto/ssh"
-	"io/ioutil"
-	"strings"
 	"fmt"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"log"
 	"path/filepath"
+	"strings"
 )
 
 var mode bool
@@ -40,12 +40,12 @@ var swarmCmd = &cobra.Command{
 			log.Fatal("Need to pass at least one alias to init swarm!")
 		}
 		nodesFromYml := getNodesFromYml(getCurrentDir())
+		if len(nodesFromYml) == 0 {
+			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+		}
 		nodeHostAndNode := make(map[string]Node)
 		for _, value := range nodesFromYml {
 			nodeHostAndNode[value.Host] = value
-		}
-		if len(nodesFromYml) == 0 {
-			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
 		clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
 		if clusterLeaderNode == (Node{}) {
@@ -133,7 +133,7 @@ func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []stri
 	log.Println("Starting swarm initialization...")
 	sudoExecSshCommand(host, "ufw allow 2377/tcp", config)
 	reloadUfwAndDocker(host, config)
-	sudoExecSshCommand(host, "docker swarm init --advertise-addr "+host+":2377", config)
+	sudoExecSshCommand(host, "docker swarm init --advertise-addr "+host, config)
 	delete(nodeAndUserName, node)
 	node.SwarmMode = leader
 	log.Println("Swarm initiated! Leader node is " + alias)
@@ -192,14 +192,13 @@ func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string)
 	var token string
 	if mode {
 		sudoExecSshCommand(host, "ufw allow 2377/tcp", config)
-		reloadUfwAndDocker(host, config)
 		token = getToken("manager", leaderHost, config)
 		node.SwarmMode = manager
 	} else {
-		reloadUfwAndDocker(host, config)
 		token = getToken("worker", leaderHost, config)
 		node.SwarmMode = worker
 	}
+	reloadUfwAndDocker(host, config)
 	sudoExecSshCommand(host, token, config)
 	logWithPrefix(node.Host, node.Alias + " successfully joined swarm to swarm!")
 	swarmChan <- node

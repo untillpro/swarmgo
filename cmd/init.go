@@ -10,10 +10,10 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"path/filepath"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
+	"path/filepath"
 )
 
 const clusterFileName = "clusterfile.yml"
@@ -22,8 +22,6 @@ type ClusterFile struct {
 	OrganizationName string `yaml:"OrganizationName"`
 	ClusterName      string `yaml:"ClusterName"`
 	ClusterUser      string `yaml:"ClusterUser"`
-	//PublicKey        string `yaml:"PublicKey"`
-	//PrivateKey       string `yaml:"PrivateKey"`
 	Docker           string `yaml:"Docker-ce"`
 	Prometheus       string `yaml:"Prometheus"`
 	Grafana          string `yaml:"Grafana"`
@@ -47,20 +45,16 @@ var initCmd = &cobra.Command{
 			log.Println("Cluster already initialized!")
 			return
 		}
-		//home, err := homedir.Dir()
-		//CheckErr(err)
 		yourClusterName := `<Your cluster name>`
 		clusterFileEntry := ClusterFile{
 			"<Your organization name>",
 			yourClusterName,
 			"cluster",
-			//filepath.Join(home, ".ssh/"+yourClusterName+".pub"),
-			//filepath.Join(home, ".ssh/"+yourClusterName),
 			"17.12.0~ce-0~ubuntu",
 			"prometheus-2.2.1.linux-amd64",
 			"grafana_5.1.2_amd64",
 			"zookeeper-3.4.12",
-			"https://github.com/containous/traefik/releases/download/v1.6.0/traefik_linux-amd64",
+			"traefik:1.7",
 		}
 		out, err := yaml.Marshal(&clusterFileEntry)
 		CheckErr(err)
