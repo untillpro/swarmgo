@@ -9,14 +9,14 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-	"strings"
-	"fmt"
-	"gopkg.in/yaml.v2"
 	"path/filepath"
+	"strings"
 )
 
 type SwarmMode int
@@ -49,8 +49,8 @@ var addNodeCmd = &cobra.Command{
 		}
 		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
-		if clusterFile.ClusterName == "<Your cluster name>" {
-			log.Fatal("Change <Your cluster name> in clusterfile.yml!")
+		if clusterFile.ClusterName == clusterNameDefaultValue {
+			log.Fatal("Change ClusterName value in " + clusterFileName)
 		}
 		publicKeyFile, privateKeyFile := findSshKeys(clusterFile.ClusterName)
 		fmt.Println("Enter password to crypt/decrypt you private key")

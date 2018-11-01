@@ -1,0 +1,8 @@
+OrganizationName: untill
+ClusterName: untill
+ClusterUser: cluster
+Docker-ce: 17.12.0~ce-0~ubuntu
+Traefik: traefik:1.7
+GrafanaAdminUser: admin
+SlackUrl: https://hooks.slack.com/services/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
+SlackChannelName: cluster

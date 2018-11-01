@@ -16,17 +16,22 @@ import (
 	"path/filepath"
 )
 
-const clusterFileName = "clusterfile.yml"
+const (
+	clusterFileName              = "clusterfile.yml"
+	clusterNameDefaultValue      = `<Your cluster name>`
+	grafanaAdminUserDefaultValue = "<Your user name>"
+	slackUrlDefaultValue         = "<Your slack alertmanager webhook URL>"
+)
 
 type ClusterFile struct {
 	OrganizationName string `yaml:"OrganizationName"`
 	ClusterName      string `yaml:"ClusterName"`
 	ClusterUser      string `yaml:"ClusterUser"`
 	Docker           string `yaml:"Docker-ce"`
-	Prometheus       string `yaml:"Prometheus"`
-	Grafana          string `yaml:"Grafana"`
-	Zookeeper        string `yaml:"Zookeeper"`
 	Traefik          string `yaml:"Traefik"`
+	GrafanaAdminUser string `yaml:"GrafanaAdminUser"`
+	SlackUrl         string `yaml:"SlackUrl"`
+	SlackChannelName string `yaml:"SlackChannelName"`
 }
 
 // initCmd represents the init command
@@ -45,16 +50,15 @@ var initCmd = &cobra.Command{
 			log.Println("Cluster already initialized!")
 			return
 		}
-		yourClusterName := `<Your cluster name>`
 		clusterFileEntry := ClusterFile{
 			"<Your organization name>",
-			yourClusterName,
+			clusterNameDefaultValue,
 			"cluster",
 			"17.12.0~ce-0~ubuntu",
-			"prometheus-2.2.1.linux-amd64",
-			"grafana_5.1.2_amd64",
-			"zookeeper-3.4.12",
 			"traefik:1.7",
+			grafanaAdminUserDefaultValue,
+			slackUrlDefaultValue,
+			"cluster",
 		}
 		out, err := yaml.Marshal(&clusterFileEntry)
 		CheckErr(err)
