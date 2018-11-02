@@ -1,7 +1,17 @@
 # Usage
 
-- Run `swarmgo init` to create `./clusterfile.yml`
-- Check/edit `./clusterfile.yml`
+Prerequestes:
+
+- Go
+- sh
+- git
+
+Steps:
+
+- Fork swarmgo repo to `mycluster`
+- git clone `mycluster`
+- Run `build.sh` to build swarmgo executable
+- Edit `clusterfile.yml` and other sources
 - Run `swarmgo node add <Alias1>=<IP1> <Alias2>=<IP2>`
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
