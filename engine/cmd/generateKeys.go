@@ -10,14 +10,14 @@ package cmd
 
 import (
 	"crypto/rand"
-	"log"
+	"crypto/rsa"
 	"crypto/x509"
+	"encoding/pem"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
-	"crypto/rsa"
+	"log"
 	"os"
 	"path/filepath"
-	"encoding/pem"
 )
 
 func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {

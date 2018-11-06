@@ -9,12 +9,12 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
-	"fmt"
 	"gopkg.in/yaml.v2"
-	"log"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 )
 

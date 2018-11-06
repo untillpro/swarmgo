@@ -9,18 +9,18 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
-	"golang.org/x/crypto/ssh"
-	"io/ioutil"
-	"log"
-	"strings"
 	"bufio"
-	"github.com/mitchellh/go-homedir"
 	"bytes"
 	"fmt"
-	"strconv"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 func appendChildToExecutablePath(child string) string {

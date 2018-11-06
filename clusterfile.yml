@@ -1,36 +1,26 @@
-###### Cluster Names
+# Organization Parameters
 
-# OrganizationName is used to generate keys
 OrganizationName: <Your Organization Name>
-
-# ClusterName is used to name key files
 ClusterName: <Your Cluster Name>
 
 # This user will be created on each node and given sudo permissions
 ClusterUser: cluster
 
-###### Keys Location
+# Key Locations
 
-# ${HOME} for Windows will be C:/Users/<User Name>
-# $ClusterName will be replaced automatically
+PublickKey: ${HOME}/.ssh/$clusterName.pub
+PrivateKey: ${HOME}/.ssh/$clusterName
 
-PublickKey: ${HOME}/.ssh/$ClusterName.pub
-PrivateKey: ${HOME}/.ssh/$ClusterName
-
-######  Software Versions
-
-# Referenced in dockerfiles as "{{ .Grafana }} " etc
+# Software Versions
 
 Docker-ce: 17.12.0~ce-0~ubuntu
-Prometheus: prometheus-2.2.1.linux-amd64
-Grafana: grafana/grafana:5.0.1
+Alertmanager: prom/alertmanager:v0.15.2
+NodeExporter: prom/node-exporter:v0.16.0
+Prometheus: prom/prometheus:v2.4.3
+Grafana: grafana/grafana:5.3.2
 Traefik: traefik:1.7
 
-######  Alert Maanager
+# For https. Doesn't work on test traefik
 
-AlertManager: <slack or discord>
+SSLEnabled: false
 
-# This name will be seen aas a source of messages
-AlertManagerAccount: <Sender name>
-
-AlertManagerChannel: <Name of channel>

@@ -1,7 +1,7 @@
 version: '3.5'
 services:
   traefik_init:
-    image: <traefik version>
+    image: {{.Traefik}}
     command:
     - "storeconfig"
     - "--api"
@@ -14,11 +14,11 @@ services:
     - "--acme.httpChallenge.entryPoint=http"
     - "--acme.onHostRule=true"
     - "--acme.onDemand=false"
-    - "--acme.email=<your email>"
+    - "--acme.email={{.Email}}"
     - "--docker"
-    - "--docker.enableexposedbydefault=false"
+    - "--docker.exposedbydefault=false"
     - "--docker.swarmMode"
-    - "--docker.domain=<your domain>"
+    - "--docker.domain={{.Domain}}"
     - "--docker.watch"
     - "--consul"
     - "--consul.endpoint=consul:8500"
@@ -31,7 +31,7 @@ services:
     depends_on:
     - consul
   traefik:
-    image: <traefik version>
+    image: {{.Traefik}}
     depends_on:
     - traefik_init
     - consul
@@ -43,7 +43,7 @@ services:
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     networks:
-    - webgateway
+    - prometheus
     - traefik
     ports:
     - target: 80
@@ -74,8 +74,6 @@ services:
     - CONSUL_LOCAL_CONFIG={"datacenter":"untill","server":true}
     - CONSUL_BIND_INTERFACE=eth0
     - CONSUL_CLIENT_INTERFACE=eth0
-    ports:
-    - 8500:8500
     deploy:
       replicas: 1
       placement:
@@ -89,7 +87,7 @@ services:
 networks:
   traefik:
     external: true
-  webgateway:
+  prometheus:
     external: true
 
 volumes:
