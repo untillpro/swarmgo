@@ -19,10 +19,25 @@ NodeExporter: prom/node-exporter:v0.16.0
 Prometheus: prom/prometheus:v2.4.3
 Grafana: grafana/grafana:5.3.2
 Traefik: traefik:1.7
+
+## ACME configuration
+
+# If enabled 
+#   - ACME will be used through letsencrypt provider
+#   - traefik.yml is used to configure traefik, otherwise traefik-http.yml
+ACMEEnabled: true
+
+# If ACME is enabled the following paramaters are required
 Domain: abc
 Email: cda
 
-# For https. Doesn't work on test traefik
+#######################
 
-SSLEnabled: false
+# Grafana User Name
+GrafanaUser: admin
 
+# Prometheus User Name
+PrometheusUser: admin
+
+# Traefik User Name
+PrometheusUser: admin

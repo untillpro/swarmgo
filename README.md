@@ -24,6 +24,18 @@ Steps:
   - Install swarm in `worker` mode for all nodes which do not have swarm configured yet
   - At least one manager must be configured first
 
+
+Services:
+- mycluster.io/traefik
+- mycluster.io/graphana
+- mycluster.io/prometheus
+
+# Under the Hood
+
+Networks:
+- traefik: traefik + consul
+- webgateway: all services which should be available from outside, such services must have a label `traefik.enabled=true`
+
 # Logs
 
 - Logs are written to `./logs` folder
