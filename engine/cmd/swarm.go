@@ -110,14 +110,14 @@ var swarmCmd = &cobra.Command{
 }
 
 func getToken(mode, host string, config *ssh.ClientConfig) string {
-	output := sudoExecSshCommand(host, "docker swarm join-token "+mode, config)
+	output := sudoExecSSHCommand(host, "docker swarm join-token "+mode, config)
 	return strings.Trim(substringAfterIncludeValue(output, "docker swarm join"), "\n ")
 }
 
 func reloadUfwAndDocker(host string, config *ssh.ClientConfig) {
 	log.Println("Restarting ufw and docker...")
-	sudoExecSshCommand(host, "ufw reload", config)
-	sudoExecSshCommand(host, "systemctl restart docker", config)
+	sudoExecSSHCommand(host, "ufw reload", config)
+	sudoExecSSHCommand(host, "systemctl restart docker", config)
 	log.Println("Ufw and docker restarted!")
 }
 
@@ -131,9 +131,9 @@ func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []stri
 	config := findSshKeysAndInitConnection(clusterName, nodeAndUserName[node], passToKey)
 	configUfwToWorkInSwarmMode(host, config)
 	log.Println("Starting swarm initialization...")
-	sudoExecSshCommand(host, "ufw allow 2377/tcp", config)
+	sudoExecSSHCommand(host, "ufw allow 2377/tcp", config)
 	reloadUfwAndDocker(host, config)
-	sudoExecSshCommand(host, "docker swarm init --advertise-addr "+host, config)
+	sudoExecSSHCommand(host, "docker swarm init --advertise-addr "+host, config)
 	delete(nodeAndUserName, node)
 	node.SwarmMode = leader
 	log.Println("Swarm initiated! Leader node is " + alias)
@@ -177,11 +177,11 @@ func getHostsFromNodesGroupingBySwarmModeValue(nodes []Node) (Node, [] Node, [] 
 
 func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) {
 	logWithPrefix(host, "Configuring ufw to work with swarm...")
-	sudoExecSshCommand(host, "ufw allow 22/tcp", config)
-	sudoExecSshCommand(host, "ufw allow 2376/tcp", config)
-	sudoExecSshCommand(host, "ufw allow 7946/tcp", config)
-	sudoExecSshCommand(host, "ufw allow 7946/udp", config)
-	sudoExecSshCommand(host, "ufw allow 4789/udp", config)
+	sudoExecSSHCommand(host, "ufw allow 22/tcp", config)
+	sudoExecSSHCommand(host, "ufw allow 2376/tcp", config)
+	sudoExecSSHCommand(host, "ufw allow 7946/tcp", config)
+	sudoExecSSHCommand(host, "ufw allow 7946/udp", config)
+	sudoExecSSHCommand(host, "ufw allow 4789/udp", config)
 	logWithPrefix(host, "Ufw configured")
 }
 
@@ -191,7 +191,7 @@ func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string)
 	configUfwToWorkInSwarmMode(host, config)
 	var token string
 	if mode {
-		sudoExecSshCommand(host, "ufw allow 2377/tcp", config)
+		sudoExecSSHCommand(host, "ufw allow 2377/tcp", config)
 		token = getToken("manager", leaderHost, config)
 		node.SwarmMode = manager
 	} else {
@@ -199,7 +199,7 @@ func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string)
 		node.SwarmMode = worker
 	}
 	reloadUfwAndDocker(host, config)
-	sudoExecSshCommand(host, token, config)
+	sudoExecSSHCommand(host, token, config)
 	logWithPrefix(node.Host, node.Alias + " successfully joined swarm to swarm!")
 	swarmChan <- node
 }

@@ -133,10 +133,10 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
-	execSshCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
+	execSSHCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
 	logWithPrefix(host, "New user "+userName+" added")
-	execSshCommand(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
-	execSshCommand(host, "usermod -aG sudo "+userName, sshConfig)
+	execSSHCommand(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
+	execSSHCommand(host, "usermod -aG sudo "+userName, sshConfig)
 	logWithPrefix(host, "Sudo permissions given to "+userName)
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
@@ -144,27 +144,27 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToUser)},
 	}
 	logWithPrefix(host, "Relogin from root to "+userName)
-	sudoExecSshCommand(host, "passwd -l root", sshConfig)
+	sudoExecSSHCommand(host, "passwd -l root", sshConfig)
 	logWithPrefix(host, "Root password disabled")
-	execSshCommand(host, "mkdir ~/.ssh", sshConfig)
-	execSshCommand(host, "chmod 700 ~/.ssh", sshConfig)
-	execSshCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
-	execSshCommand(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
+	execSSHCommand(host, "mkdir ~/.ssh", sshConfig)
+	execSSHCommand(host, "chmod 700 ~/.ssh", sshConfig)
+	execSSHCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
+	execSSHCommand(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
 	//read public key
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
 	CheckErr(err)
-	execSshCommand(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
+	execSSHCommand(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
 	logWithPrefix(host, "Host public key added to remote server")
-	sudoExecSshCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
+	sudoExecSSHCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
 	logWithPrefix(host, host+" password auth disabled")
 	sshConfig = initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
-	sudoExecSshCommand(host, "ufw allow OpenSSH", sshConfig)
-	sudoExecSshCommand(host, "yes | sudo ufw enable", sshConfig)
-	sudoExecSshCommand(host, "ufw reload", sshConfig)
+	sudoExecSSHCommand(host, "ufw allow OpenSSH", sshConfig)
+	sudoExecSSHCommand(host, "yes | sudo ufw enable", sshConfig)
+	sudoExecSSHCommand(host, "ufw reload", sshConfig)
 	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
 }
 
 func init() {
-	nodeCmd.AddCommand(addNodeCmd)
+	rootCmd.AddCommand(addNodeCmd)
 }

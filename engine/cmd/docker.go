@@ -92,19 +92,19 @@ func installDocker(node Node, version string, config *ssh.ClientConfig) {
 		return
 	}
 	logWithPrefix(host, "Updating apt-get...")
-	sudoExecSshCommand(host, "apt-get update", config)
+	sudoExecSSHCommand(host, "apt-get update", config)
 	logWithPrefix(host, "Installing packages to allow apt to use a repository over HTTPS...")
-	sudoExecSshCommand(host, "apt-get -y install apt-transport-https ca-certificates curl "+
+	sudoExecSSHCommand(host, "apt-get -y install apt-transport-https ca-certificates curl "+
 		"software-properties-common", config)
 	logWithPrefix(host, "Add Docker’s official GPG key")
-	execSshCommand(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
+	execSSHCommand(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
 	logWithPrefix(host, "Adding repository")
-	sudoExecSshCommand(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
+	sudoExecSSHCommand(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
 		"$(lsb_release -cs) stable\"", config)
 	logWithPrefix(host, "Updating apt-get...")
-	sudoExecSshCommand(host, "apt-get update", config)
+	sudoExecSSHCommand(host, "apt-get update", config)
 	logWithPrefix(host, "Trying to install "+docker+" version "+version+"...")
-	sudoExecSshCommand(host, "apt-get -y install "+docker+"="+version, config)
+	sudoExecSSHCommand(host, "apt-get -y install "+docker+"="+version, config)
 	logWithPrefix(host, "Checking installation...")
 	if checkDockerInstallation(host, version, config) {
 		logWithPrefix(host, "Docker successfully installed")

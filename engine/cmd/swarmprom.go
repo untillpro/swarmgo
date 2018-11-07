@@ -18,7 +18,7 @@ import (
 var swarmpromCmd = &cobra.Command{
 	Use:   "swarmprom",
 	Short: "Create starter kti ro swarm monitoring",
-	Long:  `Deploys Prometheus, SlackUrl, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
+	Long:  `Deploys Prometheus, SlackURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
@@ -62,15 +62,15 @@ func deploySwarmprom(passToKey, passToGrafana string, clusterFile *ClusterFile, 
 	if grafanaAdminUser == grafanaAdminUserDefaultValue {
 		log.Fatal("Need to change GrafanaAdminUser value in " + clusterFileName)
 	}
-	slackUrl := clusterFile.SlackUrl
-	if slackUrl == slackUrlDefaultValue {
-		log.Fatal("Need to change SlackUrl value in " + clusterFileName)
+	slackUrl := clusterFile.SlackURL
+	if slackUrl == slackURLDefaultValue {
+		log.Fatal("Need to change SlackURL value in " + clusterFileName)
 	}
 	config := findSshKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
 	log.Println("Trying to clone swarmprom repository")
-	execSshCommand(host, "git clone https://github.com/untillpro/swarmprom.git", config)
+	execSSHCommand(host, "git clone https://github.com/untillpro/swarmprom.git", config)
 	log.Println("Swarmprom repository successfully cloned")
-	sudoExecSshCommand(host, "docker network create -d overlay --attachable net", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay --attachable net", config)
 	var strBuilder strings.Builder
 	strBuilder.WriteString("ADMIN_USER=")
 	strBuilder.WriteString(grafanaAdminUser)
@@ -82,7 +82,7 @@ func deploySwarmprom(passToKey, passToGrafana string, clusterFile *ClusterFile, 
 	strBuilder.WriteString(clusterFile.SlackChannelName)
 	strBuilder.WriteString(" SLACK_USER=alertmanager docker stack deploy -c swarmprom/docker-compose.yml prom")
 	log.Println("Trying to deploy swarmprom")
-	sudoExecSshCommand(host, strBuilder.String(), config)
+	sudoExecSSHCommand(host, strBuilder.String(), config)
 	log.Println("Swarmprom successfully deployed")
 }
 

@@ -9,10 +9,13 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
+	"html/template"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 type entry struct {
@@ -22,6 +25,7 @@ type entry struct {
 
 var email string
 var domain string
+var isTest bool
 
 // traefikCmd represents the traefik command
 var traefikCmd = &cobra.Command{
@@ -65,30 +69,39 @@ var traefikCmd = &cobra.Command{
 }
 
 func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry) {
-	traefikVers := clusterFile.Traefik
 	clusterName := clusterFile.ClusterName
 	host := firstEntry.node.Host
-	traefikCompose, err := Asset("resources/traefik.yml")
+	var traefikComposeName string
+	if isTest {
+		traefikComposeName = traefikTestComposeFileName
+	} else {
+		traefikComposeName = traefikComposeFileName
+
+	}
+	traefikComposeFile, err := os.Open(filepath.Join(getCurrentDir(), traefikComposeName))
 	CheckErr(err)
-	modifiedTraefikCompose := bytes.Replace(traefikCompose, []byte("<traefik version>"), []byte(traefikVers), -1)
-	modifiedTraefikCompose = bytes.Replace(modifiedTraefikCompose, []byte("<your email>"), []byte(email), -1)
-	modifiedTraefikCompose = bytes.Replace(modifiedTraefikCompose, []byte("<your domain>"), []byte(domain), -1)
+	traefikComposeFileContent, err := ioutil.ReadAll(traefikComposeFile)
+	CheckErr(err)
+	tmpl, err := template.New("traefik").Parse(string(traefikComposeFileContent))
+	t := tmpl.Execute(os.Stdout, clusterFile)
+	fmt.Println(t)
 	log.Println("traefik.yml modified")
 	config := findSshKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
-	sudoExecSshCommand(host, "docker network create -d overlay traefik", config)
-	sudoExecSshCommand(host, "docker network create -d overlay webgateway", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay traefik", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay prometheus", config)
 	log.Println("Overlay networks created")
-	execSshCommand(host, "mkdir ~/traefik", config)
-	execSshCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+string(modifiedTraefikCompose)+"\nEOF", config)
+	execSSHCommand(host, "mkdir ~/traefik", config)
+	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+string(traefikComposeFileContent)+"\nEOF", config)
 	log.Println("traefik.yml written to host")
-	sudoExecSshCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
+	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
 	log.Println("traefik deployed")
 }
 
 func init() {
 	rootCmd.AddCommand(traefikCmd)
-	traefikCmd.Flags().StringVarP(&email, "email", "e", "", "Email for registration to Let's Encrypt")
+	traefikCmd.Flags().StringVarP(&email, "email", "e", "", "Email for registration to Let's"+
+		" Encrypt")
 	traefikCmd.Flags().StringVarP(&domain, "domain", "d", "", "Domain name for SSL certificate")
-	traefikCmd.MarkFlagRequired("email")
-	traefikCmd.MarkFlagRequired("domain")
+	traefikCmd.Flags().BoolVarP(&isTest, "test", "t", true, "Traefik for test purposes with"+
+		" localhost domain and without SSL")
 }

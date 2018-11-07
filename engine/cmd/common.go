@@ -42,7 +42,7 @@ func checkFileExistence(clusterFile string) bool {
 	}
 }
 
-func execSshCommand(host, cmd string, config *ssh.ClientConfig) string {
+func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	CheckErr(err)
 	bs, err := execSshCommandWithoutPanic(cmd, conn)
@@ -77,8 +77,8 @@ func redirectLogs() *os.File{
 	return f
 }
 
-func sudoExecSshCommand(host, cmd string, config *ssh.ClientConfig) string {
-	return execSshCommand(host, "sudo "+cmd, config)
+func sudoExecSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
+	return execSSHCommand(host, "sudo "+cmd, config)
 }
 
 func initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, password string) *ssh.ClientConfig {
@@ -151,7 +151,7 @@ func checkDockerInstallation(host, version string, config *ssh.ClientConfig) boo
 		//just catching stderr from ubuntu because `docker` is unknown command
 		recover()
 	}()
-	exit := execSshCommand(host, "docker -v", config)
+	exit := execSSHCommand(host, "docker -v", config)
 	trimmedVersion := strings.Split(version, "~")[0]
 	return strings.Contains(exit, trimmedVersion)
 }

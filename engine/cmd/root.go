@@ -17,6 +17,28 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	clusterFileName              = "clusterfile.yml"
+	traefikComposeFileName       = "traefik.yml"
+	traefikTestComposeFileName   = "traefik-test.yml"
+	clusterNameDefaultValue      = `<Your cluster name>`
+	grafanaAdminUserDefaultValue = "<Your user name>"
+	slackURLDefaultValue         = "<Your slack alertmanager webhook URL>"
+)
+
+type ClusterFile struct {
+	OrganizationName string `yaml:"OrganizationName"`
+	ClusterName      string `yaml:"ClusterName"`
+	ClusterUser      string `yaml:"ClusterUser"`
+	Docker           string `yaml:"Docker"`
+	Traefik          string `yaml:"Traefik"`
+	Domain           string `yaml:"Domain"`
+	Email            string `yaml:"Email"`
+	GrafanaAdminUser string `yaml:"GrafanaAdminUser"`
+	SlackURL         string `yaml:"SlackURL"`
+	SlackChannelName string `yaml:"SlackChannelName"`
+}
+
 var cfgFile string
 var logs bool
 
