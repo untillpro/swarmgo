@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
 	"html/template"
@@ -81,15 +82,16 @@ func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry
 	traefikComposeFileContent, err := ioutil.ReadAll(traefikComposeFile)
 	CheckErr(err)
 	tmpl, err := template.New("traefik").Parse(string(traefikComposeFileContent))
-	t := tmpl.Execute(os.Stdout, clusterFile)
-	log.Println(t)
+	var tmplBuffer bytes.Buffer
+	err = tmpl.Execute(&tmplBuffer, clusterFile)
+	CheckErr(err)
 	log.Println("traefik.yml modified")
 	config := findSshKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
 	sudoExecSSHCommand(host, "docker network create -d overlay traefik", config)
 	sudoExecSSHCommand(host, "docker network create -d overlay webgateway", config)
 	log.Println("Overlay networks created")
 	execSSHCommand(host, "mkdir ~/traefik", config)
-	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+string(traefikComposeFileContent)+"\nEOF", config)
+	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	log.Println("traefik.yml written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
 	log.Println("traefik deployed")
