@@ -18,25 +18,31 @@ import (
 )
 
 const (
-	clusterFileName              = "clusterfile.yml"
+	swarmgoConfigFileName        = "swarmgo-config.yml"
 	traefikComposeFileName       = "traefik.yml"
-	traefikTestComposeFileName   = "traefik-test.yml"
+	traefikTestComposeFileName   = "traefik-http.yml"
 	clusterNameDefaultValue      = `<Your cluster name>`
 	grafanaAdminUserDefaultValue = "<Your user name>"
 	slackURLDefaultValue         = "<Your slack alertmanager webhook URL>"
 )
 
 type ClusterFile struct {
-	OrganizationName string `yaml:"OrganizationName"`
-	ClusterName      string `yaml:"ClusterName"`
-	ClusterUser      string `yaml:"ClusterUser"`
-	Docker           string `yaml:"Docker"`
-	Traefik          string `yaml:"Traefik"`
-	Domain           string `yaml:"Domain"`
-	Email            string `yaml:"Email"`
-	GrafanaAdminUser string `yaml:"GrafanaAdminUser"`
-	SlackURL         string `yaml:"SlackURL"`
-	SlackChannelName string `yaml:"SlackChannelName"`
+	OrganizationName        string `yaml:"OrganizationName"`
+	ClusterName             string `yaml:"ClusterName"`
+	ClusterUser             string `yaml:"ClusterUser"`
+	Docker                  string `yaml:"Docker"`
+	Traefik                 string `yaml:"Traefik"`
+	Domain                  string `yaml:"Domain"`
+	Email                   string `yaml:"Email"`
+	GrafanaAdminUser        string `yaml:"GrafanaAdminUser"`
+	GrafanaAdminPassword    string `yaml:"GrafanaAdminPassword"`
+	PrometheusAdminUser     string `yaml:"PrometheusAdminUser"`
+	PrometheusAdminPassword string `yaml:"PrometheusAdminPassword"`
+	TraefikAdminUser        string `yaml:"TraefikAdminUser"`
+	TraefikAdminPassword    string `yaml:"TraefikAdminPassword"`
+	SlackURL                string `yaml:"SlackURL"`
+	SlackChannelName        string `yaml:"SlackChannelName"`
+	ACMEEnabled             bool   `yaml:"ACMEEnabled"`
 }
 
 var cfgFile string

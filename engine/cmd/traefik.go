@@ -23,10 +23,6 @@ type entry struct {
 	node               Node
 }
 
-var email string
-var domain string
-var isTest bool
-
 // traefikCmd represents the traefik command
 var traefikCmd = &cobra.Command{
 	Use:   "traefik",
@@ -72,11 +68,13 @@ func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry
 	clusterName := clusterFile.ClusterName
 	host := firstEntry.node.Host
 	var traefikComposeName string
-	if isTest {
-		traefikComposeName = traefikTestComposeFileName
-	} else {
+	if clusterFile.ACMEEnabled {
 		traefikComposeName = traefikComposeFileName
-
+		if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
+			log.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
+		}
+	} else {
+		traefikComposeName = traefikTestComposeFileName
 	}
 	traefikComposeFile, err := os.Open(filepath.Join(getCurrentDir(), traefikComposeName))
 	CheckErr(err)
@@ -84,11 +82,11 @@ func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry
 	CheckErr(err)
 	tmpl, err := template.New("traefik").Parse(string(traefikComposeFileContent))
 	t := tmpl.Execute(os.Stdout, clusterFile)
-	fmt.Println(t)
+	log.Println(t)
 	log.Println("traefik.yml modified")
 	config := findSshKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
 	sudoExecSSHCommand(host, "docker network create -d overlay traefik", config)
-	sudoExecSSHCommand(host, "docker network create -d overlay prometheus", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay webgateway", config)
 	log.Println("Overlay networks created")
 	execSSHCommand(host, "mkdir ~/traefik", config)
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+string(traefikComposeFileContent)+"\nEOF", config)
@@ -99,9 +97,4 @@ func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry
 
 func init() {
 	rootCmd.AddCommand(traefikCmd)
-	traefikCmd.Flags().StringVarP(&email, "email", "e", "", "Email for registration to Let's"+
-		" Encrypt")
-	traefikCmd.Flags().StringVarP(&domain, "domain", "d", "", "Domain name for SSL certificate")
-	traefikCmd.Flags().BoolVarP(&isTest, "test", "t", true, "Traefik for test purposes with"+
-		" localhost domain and without SSL")
 }

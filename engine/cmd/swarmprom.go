@@ -60,11 +60,11 @@ func deploySwarmprom(passToKey, passToGrafana string, clusterFile *ClusterFile, 
 	host := firstEntry.node.Host
 	grafanaAdminUser := clusterFile.GrafanaAdminUser
 	if grafanaAdminUser == grafanaAdminUserDefaultValue {
-		log.Fatal("Need to change GrafanaAdminUser value in " + clusterFileName)
+		log.Fatal("Need to change GrafanaAdminUser value in " + swarmgoConfigFileName)
 	}
 	slackUrl := clusterFile.SlackURL
 	if slackUrl == slackURLDefaultValue {
-		log.Fatal("Need to change SlackURL value in " + clusterFileName)
+		log.Fatal("Need to change SlackURL value in " + swarmgoConfigFileName)
 	}
 	config := findSshKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
 	log.Println("Trying to clone swarmprom repository")

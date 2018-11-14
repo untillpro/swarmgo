@@ -2,21 +2,26 @@ version: '3'
 
 services:
   traefik:
-    image: {{.Traefik}}
+    image: traefik
     command:
     - --docker
     - --docker.exposedbydefault=false
     - --docker.swarmMode
     - --docker.watch
-    - --api
     - --docker.domain=localhost
+    - --api
     - --logLevel=INFO
     networks:
-    - prometheus
+    - webgateway
     ports:
     - "80:80"
-    - "8080:8080"
     deploy:
+      labels:
+      - traefik.enable=true
+      - traefik.backend=traefik
+      - traefik.frontend.rule=PathPrefixStrip:/traefik
+      - traefik.port=8080
+      - traefik.docker.network=webgateway
       placement:
         constraints:
         - node.role == manager
@@ -25,5 +30,5 @@ services:
     - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
-  prometheus:
+  webgateway:
     external: true

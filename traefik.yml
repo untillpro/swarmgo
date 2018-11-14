@@ -43,23 +43,22 @@ services:
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     networks:
-    - prometheus
+    - webgateway
     - traefik
     ports:
-    - target: 80
-      published: 80
-      mode: host
-    - target: 443
-      published: 443
-      mode: host
-    - target: 8080
-      published: 8080
-      mode: host
+    - "80:80"
+    - "443:443"
     deploy:
       mode: global
       placement:
         constraints:
         - node.role == manager
+      labels:
+      - traefik.enable=true
+      - traefik.backend=traefik
+      - traefik.frontend.rule=PathPrefixStrip:/traefik
+      - traefik.port=8080
+      - traefik.docker.network=webgateway
       update_config:
         parallelism: 1
         delay: 10s
@@ -87,7 +86,7 @@ services:
 networks:
   traefik:
     external: true
-  prometheus:
+  webgateway:
     external: true
 
 volumes:

@@ -207,7 +207,7 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 }
 
 func unmarshalClusterYml() *ClusterFile {
-	clusterFileEntry := readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
+	clusterFileEntry := readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
 	clusterFileStruct := ClusterFile{}
 	err := yaml.Unmarshal(clusterFileEntry, &clusterFileStruct)
 	CheckErr(err)

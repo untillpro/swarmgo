@@ -1,4 +1,4 @@
-FROM {{.AlertManager}}
+FROM {{.Alertmanager}}
 
 COPY conf /etc/alertmanager/
 

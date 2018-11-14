@@ -47,10 +47,10 @@ var addNodeCmd = &cobra.Command{
 			f := redirectLogs()
 			defer f.Close()
 		}
-		readFileIfExists(clusterFileName, "Need to use swarmgo init first!")
+		readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
 		if clusterFile.ClusterName == clusterNameDefaultValue {
-			log.Fatal("Change ClusterName value in " + clusterFileName)
+			log.Fatal("Change ClusterName value in " + swarmgoConfigFileName)
 		}
 		publicKeyFile, privateKeyFile := findSshKeys(clusterFile.ClusterName)
 		fmt.Println("Enter password to crypt/decrypt you private key")

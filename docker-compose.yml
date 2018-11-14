@@ -16,7 +16,7 @@ services:
   cadvisor:
     image: google/cadvisor:v.0.31.0
     networks:
-    - prometheus
+    - webgateway
     command: -docker_only
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -35,7 +35,7 @@ services:
   grafana:
     image: {{.Grafana}}
     networks:
-    - prometheus
+    - webgateway
     environment:
     - GF_SECURITY_ADMIN_USER={{if .User}}{{.User}}{{else}}admin{{end}}
     - GF_SECURITY_ADMIN_PASSWORD={{if .Password}}{{.Password}}{{else}}admin{{end}}
@@ -59,7 +59,7 @@ services:
       - traefik.enable=true
       - traefik.frontend.rule=PathPrefixStrip:/grafana
       - traefik.port=3000
-      - traefik.docker.network=prometheus
+      - traefik.docker.network=webgateway
       replicas: 1
       placement:
         constraints:
@@ -71,9 +71,9 @@ services:
           memory: 64M
 
   alertmanager:
-    image: {{.AlertManager}}
+    image: {{.Alertmanager}}
     networks:
-    - prometheus
+    - webgateway
     environment:
     - SLACK_URL=${SLACK_URL:-https://hooks.slack.com/services/TOKEN}
     - SLACK_CHANNEL=${SLACK_CHANNEL:-general}
@@ -98,7 +98,7 @@ services:
   node-exporter:
     image: {{.NodeExporter}}
     networks:
-    - prometheus
+    - webgateway
     environment:
     - NODE_ID={{.Node.ID}}
     volumes:
@@ -126,7 +126,7 @@ services:
   prometheus:
     image: {{.Prometheus}}
     networks:
-    - prometheus
+    - webgateway
     command:
     - '--config.file=/etc/prometheus/prometheus.yml'
     - '--web.console.libraries=/etc/prometheus/console_libraries'
@@ -152,7 +152,7 @@ services:
       - traefik.enable=true
       - traefik.frontend.rule=PathPrefixStrip:/prometheus
       - traefik.port=9090
-      - traefik.docker.network=prometheus
+      - traefik.docker.network=webgateway
       resources:
         limits:
           memory: 2048M
@@ -160,5 +160,5 @@ services:
           memory: 128M
 
 networks:
-  prometheus:
+  webgateway:
     external: true
