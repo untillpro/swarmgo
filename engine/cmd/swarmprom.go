@@ -11,79 +11,106 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/tmc/scp"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 	"log"
-	"strings"
+	"os"
+	"path/filepath"
 )
+
+const (
+	alertmanagerDockerfilePath = "alertmanager/Dockerfile"
+	nodeExporterDockerfilePath = "node-exporter/Dockerfile"
+)
+
+type infoForCopy struct {
+	nodeEntry   *entry
+	config      *ssh.ClientConfig
+	clusterFile *clusterFile
+}
 
 var swarmpromCmd = &cobra.Command{
 	Use:   "swarmprom",
-	Short: "Create starter kti ro swarm monitoring",
-	Long:  `Deploys Prometheus, SlackURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
+	Short: "Create starter kit for swarm monitoring",
+	Long:  `Deploys Prometheus, WebhookURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
 			defer f.Close()
 		}
-		clusterFile := unmarshalClusterYml()
-		nodesFromYml := getNodesFromYml(getCurrentDir())
-		if len(nodesFromYml) == 0 {
-			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
-		}
-		var firstEntry *entry = nil
-		var userName string
-		for _, value := range nodesFromYml {
-			if value.SwarmMode == 0 {
-				log.Fatal("All nodes must be in swarm! Node " + value.Host + " is't part of the swarm")
-			}
-			if value.SwarmMode == 3 {
-				fmt.Println("input user name for host " + value.Host)
-				for len(userName) == 0 {
-					fmt.Println("User name can't be empty!")
-					userName = waitUserInput()
-				}
-				firstEntry = &entry{
-					value.Host,
-					userName,
-					value,
-				}
-			}
-		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
-		fmt.Println("Enter password for grafana admin user")
-		passToGrafana := waitUserInput()
-		deploySwarmprom(passToKey, passToGrafana, clusterFile, firstEntry)
+		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
+		if !firstEntry.node.Traefik {
+			log.Fatal("Need to deploy traefik before swarmprom deploy")
+		}
+		deploySwarmprom(passToKey, clusterFile, firstEntry)
 	},
 }
 
-func deploySwarmprom(passToKey, passToGrafana string, clusterFile *ClusterFile, firstEntry *entry) {
+func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
+	fmt.Println("Enter password for grafana admin user")
+	clusterFile.GrafanaPassword = waitUserInput()
+	fmt.Println("Enter webhook URL for alertmanager")
+	clusterFile.WebhookURL = waitUserInput()
+	//don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
-	grafanaAdminUser := clusterFile.GrafanaAdminUser
-	if grafanaAdminUser == grafanaAdminUserDefaultValue {
-		log.Fatal("Need to change GrafanaAdminUser value in " + swarmgoConfigFileName)
+	config := findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+	forCopy := infoForCopy{
+		firstEntry,
+		config,
+		clusterFile,
 	}
-	slackUrl := clusterFile.SlackURL
-	if slackUrl == slackURLDefaultValue {
-		log.Fatal("Need to change SlackURL value in " + swarmgoConfigFileName)
+	relativePaths := [5]string{"alertmanager", "grafana", "node-exporter", "prometheus", dockerComposeFileName}
+	curDir := getCurrentDir()
+	for _, relativePath := range relativePaths {
+		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
 	}
-	config := findSshKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
-	log.Println("Trying to clone swarmprom repository")
-	execSSHCommand(host, "git clone https://github.com/untillpro/swarmprom.git", config)
-	log.Println("Swarmprom repository successfully cloned")
-	sudoExecSSHCommand(host, "docker network create -d overlay --attachable net", config)
-	var strBuilder strings.Builder
-	strBuilder.WriteString("ADMIN_USER=")
-	strBuilder.WriteString(grafanaAdminUser)
-	strBuilder.WriteString(" ADMIN_PASSWORD=")
-	strBuilder.WriteString(passToGrafana)
-	strBuilder.WriteString(" SLACK_URL=")
-	strBuilder.WriteString(slackUrl)
-	strBuilder.WriteString(" SLACK_CHANNEL=")
-	strBuilder.WriteString(clusterFile.SlackChannelName)
-	strBuilder.WriteString(" SLACK_USER=alertmanager docker stack deploy -c swarmprom/docker-compose.yml prom")
+	filesToApplyTemplate := [3]string{alertmanagerDockerfilePath, nodeExporterDockerfilePath, dockerComposeFileName}
+	for _, fileToApplyTemplate := range filesToApplyTemplate {
+		appliedBuffer := applyClusterFileTemplateToFile(fileToApplyTemplate, clusterFile)
+		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
+			appliedBuffer.String()+"\nEOF", config)
+		log.Println(fileToApplyTemplate, "applied by template")
+	}
+	log.Println("Trying to build alertmanager docker image from Dockerfile...")
+	sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.Alertmanager+
+		" swarmgo/alertmanager", config)
+	log.Println("Trying to build node-exporter docker image from Dockerfile...")
+	sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.NodeExporter+
+		" swarmgo/node-exporter", config)
 	log.Println("Trying to deploy swarmprom")
-	sudoExecSSHCommand(host, strBuilder.String(), config)
+	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/docker-compose.yml prom", config)
 	log.Println("Swarmprom successfully deployed")
+}
+
+func copyToHost(forCopy *infoForCopy, src string) {
+	info, err := os.Lstat(src)
+	CheckErr(err)
+	if info.IsDir() {
+		copyDirToHost(src, forCopy)
+	} else {
+		copyFileToHost(src, forCopy)
+	}
+}
+
+func copyDirToHost(dirPath string, forCopy *infoForCopy) {
+	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, "untillpro/"), forCopy.config)
+	dirContent, err := ioutil.ReadDir(dirPath)
+	CheckErr(err)
+	for _, dirEntry := range dirContent {
+		src := filepath.ToSlash(filepath.Join(dirPath, dirEntry.Name()))
+		copyToHost(forCopy, src)
+	}
+}
+
+func copyFileToHost(filePath string, forCopy *infoForCopy) {
+	relativePath := substringAfter(filePath, "untillpro/")
+	err := scp.CopyPath(filePath, relativePath, getSSHSession(forCopy.nodeEntry.node.Host, forCopy.config))
+	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "chmod +x "+relativePath, forCopy.config)
+	CheckErr(err)
+	log.Println(relativePath, "copied on host")
 }
 
 func init() {

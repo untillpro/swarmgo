@@ -18,31 +18,36 @@ import (
 )
 
 const (
-	swarmgoConfigFileName        = "swarmgo-config.yml"
-	traefikComposeFileName       = "traefik.yml"
-	traefikTestComposeFileName   = "traefik-http.yml"
-	clusterNameDefaultValue      = `<Your cluster name>`
-	grafanaAdminUserDefaultValue = "<Your user name>"
-	slackURLDefaultValue         = "<Your slack alertmanager webhook URL>"
+	swarmgoConfigFileName      = "swarmgo-config.yml"
+	traefikComposeFileName     = "traefik.yml"
+	traefikTestComposeFileName = "traefik-http.yml"
+	dockerComposeFileName      = "docker-compose.yml"
 )
 
-type ClusterFile struct {
-	OrganizationName        string `yaml:"OrganizationName"`
-	ClusterName             string `yaml:"ClusterName"`
-	ClusterUser             string `yaml:"ClusterUser"`
-	Docker                  string `yaml:"Docker"`
-	Traefik                 string `yaml:"Traefik"`
-	Domain                  string `yaml:"Domain"`
-	Email                   string `yaml:"Email"`
-	GrafanaAdminUser        string `yaml:"GrafanaAdminUser"`
-	GrafanaAdminPassword    string `yaml:"GrafanaAdminPassword"`
-	PrometheusAdminUser     string `yaml:"PrometheusAdminUser"`
-	PrometheusAdminPassword string `yaml:"PrometheusAdminPassword"`
-	TraefikAdminUser        string `yaml:"TraefikAdminUser"`
-	TraefikAdminPassword    string `yaml:"TraefikAdminPassword"`
-	SlackURL                string `yaml:"SlackURL"`
-	SlackChannelName        string `yaml:"SlackChannelName"`
-	ACMEEnabled             bool   `yaml:"ACMEEnabled"`
+type clusterFile struct {
+	OrganizationName   string `yaml:"OrganizationName"`
+	ClusterName        string `yaml:"ClusterName"`
+	ClusterUser        string `yaml:"ClusterUser"`
+	Docker             string `yaml:"Docker"`
+	Alertmanager       string `yaml:"Alertmanager"`
+	NodeExporter       string `yaml:"NodeExporter"`
+	Prometheus         string `yaml:"Prometheus"`
+	Grafana            string `yaml:"Grafana"`
+	Traefik            string `yaml:"Traefik"`
+	Cadvisor           string `yaml:"Cadvisor"`
+	ACMEEnabled        bool   `yaml:"ACMEEnabled"`
+	Domain             string `yaml:"Domain"`
+	Email              string `yaml:"Email"`
+	GrafanaUser        string `yaml:"GrafanaUser"`
+	GrafanaPassword    string `yaml:"GrafanaPassword"`
+	PrometheusUser     string `yaml:"PrometheusUser"`
+	PrometheusPassword string `yaml:"PrometheusPassword"`
+	TraefikUser        string `yaml:"TraefikUser"`
+	TraefikPassword    string `yaml:"TraefikPassword"`
+	WebhookURL         string `yaml:"WebhookURL"`
+	ChannelName        string `yaml:"ChannelName"`
+	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
+	NodeID             string `yaml:"NodeID"`
 }
 
 var cfgFile string

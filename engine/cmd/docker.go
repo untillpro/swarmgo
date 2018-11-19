@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 )
 
-var channelForNodes = make(chan Node)
+var channelForNodes = make(chan node)
 
 const docker = "docker-ce"
 
@@ -38,8 +38,8 @@ var dockerCmd = &cobra.Command{
 		if len(nodesFromYaml) == 0 {
 			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
-		alreadyInstalled := make([]Node, 0, len(nodesFromYaml))
-		notInstalled := make([]Node, 0, len(nodesFromYaml))
+		alreadyInstalled := make([]node, 0, len(nodesFromYaml))
+		notInstalled := make([]node, 0, len(nodesFromYaml))
 		for _, node := range nodesFromYaml {
 			if dockerVersion == node.DockerVersion {
 				log.Println("Docker already installer on " + node.Host)
@@ -53,7 +53,7 @@ var dockerCmd = &cobra.Command{
 		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
-		nodeAndUserName := make(map[Node]string)
+		nodeAndUserName := make(map[node]string)
 		for _, node := range notInstalled {
 			var userName string
 			fmt.Println("input user name for host " + node.Host)
@@ -64,12 +64,12 @@ var dockerCmd = &cobra.Command{
 			nodeAndUserName[node] = userName
 		}
 		for key, value := range nodeAndUserName {
-			go func(node Node, userName string) {
-				config := findSshKeysAndInitConnection(clusterFile.ClusterName, userName, passToKey)
+			go func(node node, userName string) {
+				config := findSSHKeysAndInitConnection(clusterFile.ClusterName, userName, passToKey)
 				installDocker(node, dockerVersion, config)
 			}(key, value)
 		}
-		nodes := make([]Node, 0, len(args))
+		nodes := make([]node, 0, len(args))
 		for range nodeAndUserName {
 			nodes = append(nodes,<-channelForNodes)
 		}
@@ -83,7 +83,7 @@ var dockerCmd = &cobra.Command{
 	},
 }
 
-func installDocker(node Node, version string, config *ssh.ClientConfig) {
+func installDocker(node node, version string, config *ssh.ClientConfig) {
 	host := node.Host
 	if checkDockerInstallation(host, version, config) {
 		logWithPrefix(host, "Docker version "+version+" already installed!")

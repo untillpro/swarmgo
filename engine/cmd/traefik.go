@@ -13,15 +13,13 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"html/template"
-	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 )
 
 type entry struct {
 	nodeName, userName string
-	node               Node
+	node               node
 }
 
 // traefikCmd represents the traefik command
@@ -34,38 +32,22 @@ var traefikCmd = &cobra.Command{
 			f := redirectLogs()
 			defer f.Close()
 		}
-		clusterFile := unmarshalClusterYml()
-		nodesFromYml := getNodesFromYml(getCurrentDir())
-		if len(nodesFromYml) == 0 {
-			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
-		}
-		var firstEntry *entry = nil
-		//need to create networks in manager node
-		var userName string
-		for _, value := range nodesFromYml {
-			if value.SwarmMode == 0 {
-				log.Fatal("All nodes must be in swarm! Node " + value.Host + " is't part of the swarm")
-			}
-			if value.SwarmMode == 3 {
-				fmt.Println("input user name for host " + value.Host)
-				for len(userName) == 0 {
-					fmt.Println("User name can't be empty!")
-					userName = waitUserInput()
-				}
-				firstEntry = &entry{
-					value.Host,
-					userName,
-					value,
-				}
-			}
-		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
+		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		createTraefik(passToKey, clusterFile, firstEntry)
 	},
 }
 
-func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry) {
+func applyClusterFileTemplateToFile(filePath string, clusterFile *clusterFile) *bytes.Buffer {
+	tmpl, err := template.ParseFiles(filePath)
+	var tmplBuffer bytes.Buffer
+	err = tmpl.Execute(&tmplBuffer, clusterFile)
+	CheckErr(err)
+	return &tmplBuffer
+}
+
+func createTraefik(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
 	clusterName := clusterFile.ClusterName
 	host := firstEntry.node.Host
 	var traefikComposeName string
@@ -77,23 +59,17 @@ func createTraefik(passToKey string, clusterFile *ClusterFile, firstEntry *entry
 	} else {
 		traefikComposeName = traefikTestComposeFileName
 	}
-	traefikComposeFile, err := os.Open(filepath.Join(getCurrentDir(), traefikComposeName))
-	CheckErr(err)
-	traefikComposeFileContent, err := ioutil.ReadAll(traefikComposeFile)
-	CheckErr(err)
-	tmpl, err := template.New("traefik").Parse(string(traefikComposeFileContent))
-	var tmplBuffer bytes.Buffer
-	err = tmpl.Execute(&tmplBuffer, clusterFile)
-	CheckErr(err)
+	tmplBuffer := applyClusterFileTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
-	config := findSshKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
+	config := findSSHKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
 	sudoExecSSHCommand(host, "docker network create -d overlay traefik", config)
 	sudoExecSSHCommand(host, "docker network create -d overlay webgateway", config)
-	log.Println("Overlay networks created")
+	log.Println("overlay networks created")
 	execSSHCommand(host, "mkdir ~/traefik", config)
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	log.Println("traefik.yml written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
+
 	log.Println("traefik deployed")
 }
 

@@ -20,7 +20,7 @@ import (
 )
 
 var mode bool
-var swarmChan = make(chan Node)
+var swarmChan = make(chan node)
 
 // swarmCmd represents the swarm command
 var swarmCmd = &cobra.Command{
@@ -43,12 +43,12 @@ var swarmCmd = &cobra.Command{
 		if len(nodesFromYml) == 0 {
 			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
-		nodeHostAndNode := make(map[string]Node)
+		nodeHostAndNode := make(map[string]node)
 		for _, value := range nodesFromYml {
 			nodeHostAndNode[value.Host] = value
 		}
 		clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
-		if clusterLeaderNode == (Node{}) {
+		if clusterLeaderNode == (node{}) {
 			if !mode {
 				log.Fatal("Need to specify -manager to init swarm!")
 			}
@@ -58,44 +58,44 @@ var swarmCmd = &cobra.Command{
 		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
-		nodeAndUserName := make(map[Node]string)
-		for _, node := range nodesFromYml {
-			if node == clusterLeaderNode || containsNode(clusterManagerNodes, node) ||
-				containsNode(clusterWorkerNodes, node) {
-				log.Println(node.Alias + " already in swarm!")
+		nodeAndUserName := make(map[node]string)
+		for _, nodeFromYml := range nodesFromYml {
+			if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||
+				containsNode(clusterWorkerNodes, nodeFromYml) {
+				log.Println(nodeFromYml.Alias + " already in swarm!")
 				continue
 			}
 			var userName string
 			if mode {
-				if ok := contains(args, node.Alias); !ok {
+				if ok := contains(args, nodeFromYml.Alias); !ok {
 					continue
 				}
 			}
-			fmt.Println("input user name for host " + node.Host)
+			fmt.Println("input user name for host " + nodeFromYml.Host)
 			for len(userName) == 0 {
 				fmt.Println("User name can't be empty!")
 				userName = waitUserInput()
 			}
-			nodeAndUserName[node] = userName
+			nodeAndUserName[nodeFromYml] = userName
 		}
 		if len(nodeAndUserName) == 0 {
 			log.Fatal("All nodes already in swarm")
 		}
-		var node Node
-		if clusterLeaderNode == (Node{}) {
-			node, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, passToKey, clusterFile.ClusterName)
-			nodeHostAndNode[node.Host] = node
+		var nodeVar node
+		if clusterLeaderNode == (node{}) {
+			nodeVar, nodeAndUserName = initSwarm(nodesFromYml, nodeAndUserName, args, passToKey, clusterFile.ClusterName)
+			nodeHostAndNode[nodeVar.Host] = nodeVar
 		}
 		for key, value := range nodeAndUserName {
-			go func(node Node, userName, passToKey string) {
-				joinToSwarm(node, clusterLeaderNode.Host, userName, passToKey, clusterFile.ClusterName)
+			go func(nodeVar node, userName, passToKey string) {
+				joinToSwarm(nodeVar, clusterLeaderNode.Host, userName, passToKey, clusterFile.ClusterName)
 			}(key, value, passToKey)
 		}
 		for  key := range nodeAndUserName {
 			nodeHostAndNode[key.Host] = <-swarmChan
 		}
 		close(swarmChan)
-		nodes := make([]Node, len(nodeHostAndNode))
+		nodes := make([]node, len(nodeHostAndNode))
 		i := 0
 		for _, value := range nodeHostAndNode {
 			nodes[i] = value
@@ -121,14 +121,14 @@ func reloadUfwAndDocker(host string, config *ssh.ClientConfig) {
 	log.Println("Ufw and docker restarted!")
 }
 
-func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []string,
-	passToKey, clusterName string) (Node, map[Node]string) {
+func initSwarm(nodesFromYml []node, nodeAndUserName map[node]string, args []string,
+	passToKey, clusterName string) (node, map[node]string) {
 	log.Println("Need to initiate swarm leader")
 	var alias string
 	alias = args[0]
 	node := findNodeByAliasFromNodesYml(alias, nodesFromYml)
 	host := node.Host
-	config := findSshKeysAndInitConnection(clusterName, nodeAndUserName[node], passToKey)
+	config := findSSHKeysAndInitConnection(clusterName, nodeAndUserName[node], passToKey)
 	configUfwToWorkInSwarmMode(host, config)
 	log.Println("Starting swarm initialization...")
 	sudoExecSSHCommand(host, "ufw allow 2377/tcp", config)
@@ -140,14 +140,14 @@ func initSwarm(nodesFromYml []Node, nodeAndUserName map[Node]string, args []stri
 	return node, nodeAndUserName
 }
 
-func findNodeByAliasFromNodesYml(alias string, nodesFromYml []Node) Node {
-	var leaderNode Node
+func findNodeByAliasFromNodesYml(alias string, nodesFromYml []node) node {
+	var leaderNode node
 	for _, node := range nodesFromYml {
 		if node.Alias == alias {
 			leaderNode = node
 		}
 	}
-	if leaderNode == (Node{}) {
+	if leaderNode == (node{}) {
 		log.Println("Can't find host by given alias in nodes.yml, choose it interactive")
 		alias := numberHostsFromNodesFile(nodesFromYml)
 		return findNodeByAliasFromNodesYml(alias, nodesFromYml)
@@ -155,10 +155,10 @@ func findNodeByAliasFromNodesYml(alias string, nodesFromYml []Node) Node {
 	return leaderNode
 }
 
-func getHostsFromNodesGroupingBySwarmModeValue(nodes []Node) (Node, [] Node, [] Node) {
-	var clusterLeaderHost Node
-	var clusterManagerHosts []Node
-	var clusterWorkersHost []Node
+func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, [] node, [] node) {
+	var clusterLeaderHost node
+	var clusterManagerHosts []node
+	var clusterWorkersHost []node
 	for _, node := range nodes {
 		if len(node.DockerVersion) == 0 {
 			log.Fatal("Need to install docker on all nodes from nodes.yml, please exec `swarmgo docker`")
@@ -185,9 +185,9 @@ func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) {
 	logWithPrefix(host, "Ufw configured")
 }
 
-func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string) {
+func joinToSwarm(node node, leaderHost, userName, passToKey, clusterName string) {
 	host := node.Host
-	config := findSshKeysAndInitConnection(clusterName, userName, passToKey)
+	config := findSSHKeysAndInitConnection(clusterName, userName, passToKey)
 	configUfwToWorkInSwarmMode(host, config)
 	var token string
 	if mode {
@@ -200,8 +200,37 @@ func joinToSwarm(node Node, leaderHost, userName, passToKey, clusterName string)
 	}
 	reloadUfwAndDocker(host, config)
 	sudoExecSSHCommand(host, token, config)
-	logWithPrefix(node.Host, node.Alias + " successfully joined swarm to swarm!")
+	logWithPrefix(node.Host, node.Alias+" successfully joined swarm to swarm!")
 	swarmChan <- node
+}
+
+func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
+	clusterFile := unmarshalClusterYml()
+	nodesFromYml := getNodesFromYml(getCurrentDir())
+	if len(nodesFromYml) == 0 {
+		log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+	}
+	var firstEntry *entry = nil
+	//need to create networks in manager node
+	var userName string
+	for _, value := range nodesFromYml {
+		if value.SwarmMode == 0 {
+			log.Fatal("All nodes must be in swarm! Node " + value.Host + " is't part of the swarm")
+		}
+		if value.SwarmMode == 3 {
+			fmt.Println("input user name for host " + value.Host)
+			for len(userName) == 0 {
+				fmt.Println("User name can't be empty!")
+				userName = waitUserInput()
+			}
+			firstEntry = &entry{
+				value.Host,
+				userName,
+				value,
+			}
+		}
+	}
+	return firstEntry, clusterFile
 }
 
 func init() {

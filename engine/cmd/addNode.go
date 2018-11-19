@@ -19,11 +19,11 @@ import (
 	"strings"
 )
 
-type SwarmMode int
+type swarmMode int
 
 const (
 	nodesFileName           = "nodes.yml"
-	worker        SwarmMode = iota
+	worker        swarmMode = iota
 	manager
 	leader
 )
@@ -31,9 +31,10 @@ const (
 type user struct {
 	host, alias, userName, passToRoot, passToUser string
 }
-type Node struct {
+type node struct {
 	Host, Alias, DockerVersion string
-	SwarmMode                  SwarmMode
+	SwarmMode                  swarmMode
+	Traefik                    bool
 }
 
 // addNodeCmd represents the addNode command
@@ -49,10 +50,7 @@ var addNodeCmd = &cobra.Command{
 		}
 		readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
-		if clusterFile.ClusterName == clusterNameDefaultValue {
-			log.Fatal("Change ClusterName value in " + swarmgoConfigFileName)
-		}
-		publicKeyFile, privateKeyFile := findSshKeys(clusterFile.ClusterName)
+		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile.ClusterName)
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {
@@ -98,19 +96,19 @@ var addNodeCmd = &cobra.Command{
 			user.passToUser = waitUserInput()
 			users[index] = user
 		}
-		nodesChannel := make(chan Node)
+		nodesChannel := make(chan node)
 		for _, value := range users {
 			go func(user user) {
 				//passToRoot to user and key from input
 				configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
-				node := Node{
+				node := node{
 					Host:  user.host,
 					Alias: user.alias,
 				}
 				nodesChannel <- node
 			}(value)
 		}
-		nodes := make([]Node, 0, len(args))
+		nodes := make([]node, 0, len(args))
 		for range args {
 			nodes = append(nodes, <-nodesChannel)
 		}
@@ -158,7 +156,7 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	sudoExecSSHCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
 	logWithPrefix(host, host+" password auth disabled")
-	sshConfig = initSshConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
+	sshConfig = initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
 	sudoExecSSHCommand(host, "ufw allow OpenSSH", sshConfig)
 	sudoExecSSHCommand(host, "yes | sudo ufw enable", sshConfig)
 	sudoExecSSHCommand(host, "ufw reload", sshConfig)

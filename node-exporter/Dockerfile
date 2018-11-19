@@ -1,4 +1,4 @@
-FROM {{.NodeExporter}}
+FROM prom/{{.NodeExporter}}
 
 ENV NODE_ID=none
 

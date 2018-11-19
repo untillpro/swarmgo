@@ -1,4 +1,6 @@
-FROM {{.Alertmanager}}
+FROM prom/{{.Alertmanager}}
+
+USER root
 
 COPY conf /etc/alertmanager/
 

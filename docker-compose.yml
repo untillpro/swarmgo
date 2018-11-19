@@ -10,11 +10,13 @@ configs:
     file: ./prometheus/rules/swarm_node.rules.yml
   task_rules:
     file: ./prometheus/rules/swarm_task.rules.yml
+  prom_conf:
+    file: ./prometheus/conf/prometheus.yml
 
 services:
 
   cadvisor:
-    image: google/cadvisor:v.0.31.0
+    image: google/cadvisor:v0.31.0
     networks:
     - webgateway
     command: -docker_only
@@ -37,22 +39,16 @@ services:
     networks:
     - webgateway
     environment:
-    - GF_SECURITY_ADMIN_USER={{if .User}}{{.User}}{{else}}admin{{end}}
-    - GF_SECURITY_ADMIN_PASSWORD={{if .Password}}{{.Password}}{{else}}admin{{end}}
+    - GF_SECURITY_ADMIN_USER={{.GrafanaUser}}
+    - GF_SECURITY_ADMIN_PASSWORD={{.GrafanaPassword}}
     - GF_USERS_ALLOW_SIGN_UP=false
     - GF_PATHS_PROVISIONING=/etc/grafana/provisioning/
-    - GF_SERVER_ROOT_URL={{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
-    #- GF_SMTP_ENABLED=${GF_SMTP_ENABLED:-false}
-    #- GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-grafana@test.com}
-    #- GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-Grafana}
-    #- GF_SMTP_HOST=${GF_SMTP_HOST:-smtp:25}
-    #- GF_SMTP_USER=${GF_SMTP_USER}
-    #- GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD}
+    - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
     volumes:
     - grafana:/var/lib/grafana
-    - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources/
+    - ./grafana/datasources:/etc/grafana/provisioning/datasources/
     - ./grafana/swarmprom_dashboards.yml:/etc/grafana/provisioning/dashboards/
-    - ./grafana/provisioning/dashboards:/etc/grafana/dashboards/
+    - ./grafana/dashboards:/etc/grafana/dashboards/
     deploy:
       mode: replicated
       labels:
@@ -71,13 +67,13 @@ services:
           memory: 64M
 
   alertmanager:
-    image: {{.Alertmanager}}
+    image: {{.OrganizationName}}/{{.Alertmanager}}
     networks:
     - webgateway
     environment:
-    - SLACK_URL=${SLACK_URL:-https://hooks.slack.com/services/TOKEN}
-    - SLACK_CHANNEL=${SLACK_CHANNEL:-general}
-    - SLACK_USER=${SLACK_USER:-alertmanager}
+    - SLACK_URL={{.WebhookURL}}
+    - SLACK_CHANNEL={{.ChannelName}}
+    - SLACK_USER={{.AlertmanagerUser}}
     command:
     - '--config.file=/etc/alertmanager/alertmanager.yml'
     - '--storage.path=/alertmanager'
@@ -96,11 +92,11 @@ services:
           memory: 64M
 
   node-exporter:
-    image: {{.NodeExporter}}
+    image: {{.OrganizationName}}/{{.NodeExporter}}
     networks:
     - webgateway
     environment:
-    - NODE_ID={{.Node.ID}}
+    - NODE_ID={{.NodeID}}
     volumes:
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
@@ -133,15 +129,17 @@ services:
     - '--web.console.templates=/etc/prometheus/consoles'
     - '--storage.tsdb.path=/prometheus'
     - '--storage.tsdb.retention=24h'
-    - '--web.external-url=http{{if .SSLEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/prometheus'
+    - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/prometheus'
+    - '--web.route-prefix=/'
     volumes:
-    - ./prometheus/:/etc/prometheus/
     - prometheus:/prometheus
     configs:
     - source: node_rules
       target: /etc/prometheus/swarm_node.rules.yml
     - source: task_rules
       target: /etc/prometheus/swarm_task.rules.yml
+    - source: prom_conf
+      target: /etc/prometheus/prometheus.yml
     deploy:
       mode: replicated
       replicas: 1
