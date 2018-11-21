@@ -156,6 +156,8 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	sudoExecSSHCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
 	logWithPrefix(host, host+" password auth disabled")
+	sudoExecSSHCommand(host, "sudo service ssh restart", sshConfig)
+	logWithPrefix(host, "SSH reloaded")
 	sshConfig = initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
 	sudoExecSSHCommand(host, "ufw allow OpenSSH", sshConfig)
 	sudoExecSSHCommand(host, "yes | sudo ufw enable", sshConfig)

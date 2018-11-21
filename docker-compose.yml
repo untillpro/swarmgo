@@ -17,6 +17,7 @@ services:
 
   cadvisor:
     image: google/cadvisor:v0.31.0
+    container_name: cadvisor
     networks:
     - webgateway
     command: -docker_only
@@ -36,6 +37,7 @@ services:
 
   grafana:
     image: {{.Grafana}}
+    container_name: grafana
     networks:
     - webgateway
     environment:
@@ -46,17 +48,20 @@ services:
     - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
     volumes:
     - grafana:/var/lib/grafana
-    - ./grafana/datasources:/etc/grafana/provisioning/datasources/
-    - ./grafana/swarmprom_dashboards.yml:/etc/grafana/provisioning/dashboards/
-    - ./grafana/dashboards:/etc/grafana/dashboards/
+    - ./grafana/datasources:/etc/grafana/datasources
+    - ./grafana/dashboards:/etc/grafana/dashboards
+    - ./grafana/setup.sh:/setup.sh
+    entrypoint: /setup.sh
+    depends_on:
+    - prometheus
     deploy:
       mode: replicated
+      replicas: 1
       labels:
       - traefik.enable=true
       - traefik.frontend.rule=PathPrefixStrip:/grafana
       - traefik.port=3000
       - traefik.docker.network=webgateway
-      replicas: 1
       placement:
         constraints:
         - node.role == manager
@@ -67,7 +72,8 @@ services:
           memory: 64M
 
   alertmanager:
-    image: {{.OrganizationName}}/{{.Alertmanager}}
+    image: {{.Alertmanager}}
+    container_name: alertmanager
     networks:
     - webgateway
     environment:
@@ -92,7 +98,8 @@ services:
           memory: 64M
 
   node-exporter:
-    image: {{.OrganizationName}}/{{.NodeExporter}}
+    image: {{.NodeExporter}}
+    container_name: node-exporter
     networks:
     - webgateway
     environment:
@@ -121,6 +128,7 @@ services:
 
   prometheus:
     image: {{.Prometheus}}
+    container_name: prometheus
     networks:
     - webgateway
     command:
@@ -140,6 +148,8 @@ services:
       target: /etc/prometheus/swarm_task.rules.yml
     - source: prom_conf
       target: /etc/prometheus/prometheus.yml
+    depends_on:
+    - cadvisor
     deploy:
       mode: replicated
       replicas: 1

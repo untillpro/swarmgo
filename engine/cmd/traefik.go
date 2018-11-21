@@ -12,7 +12,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"path/filepath"
 )
@@ -36,6 +38,17 @@ var traefikCmd = &cobra.Command{
 		passToKey := waitUserInput()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		createTraefik(passToKey, clusterFile, firstEntry)
+		nodes := getNodesFromYml(getCurrentDir())
+		for i, node := range nodes {
+			if node.SwarmMode == 3 {
+				nodes[i].Traefik = true
+			}
+		}
+		marshaledNode, err := yaml.Marshal(&nodes)
+		CheckErr(err)
+		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
+		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
+		CheckErr(err)
 	},
 }
 
@@ -62,14 +75,13 @@ func createTraefik(passToKey string, clusterFile *clusterFile, firstEntry *entry
 	tmplBuffer := applyClusterFileTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
 	config := findSSHKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
-	sudoExecSSHCommand(host, "docker network create -d overlay traefik", config)
-	sudoExecSSHCommand(host, "docker network create -d overlay webgateway", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay traefik || true", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay webgateway || true", config)
 	log.Println("overlay networks created")
-	execSSHCommand(host, "mkdir ~/traefik", config)
+	execSSHCommand(host, "mkdir -p ~/traefik", config)
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	log.Println("traefik.yml written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
-
 	log.Println("traefik deployed")
 }
 

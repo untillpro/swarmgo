@@ -200,7 +200,7 @@ func joinToSwarm(node node, leaderHost, userName, passToKey, clusterName string)
 	}
 	reloadUfwAndDocker(host, config)
 	sudoExecSSHCommand(host, token, config)
-	logWithPrefix(node.Host, node.Alias+" successfully joined swarm to swarm!")
+	logWithPrefix(node.Host, node.Alias+" successfully joined to swarm!")
 	swarmChan <- node
 }
 
@@ -210,13 +210,13 @@ func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
 	if len(nodesFromYml) == 0 {
 		log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 	}
-	var firstEntry *entry = nil
+	var firstEntry *entry
 	//need to create networks in manager node
 	var userName string
 	for _, value := range nodesFromYml {
-		if value.SwarmMode == 0 {
-			log.Fatal("All nodes must be in swarm! Node " + value.Host + " is't part of the swarm")
-		}
+		//if value.SwarmMode == 0 {
+		//	log.Fatal("All nodes must be in swarm! Node " + value.Host + " isn't part of the swarm")
+		//}
 		if value.SwarmMode == 3 {
 			fmt.Println("input user name for host " + value.Host)
 			for len(userName) == 0 {

@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	alertmanagerDockerfilePath = "alertmanager/Dockerfile"
-	nodeExporterDockerfilePath = "node-exporter/Dockerfile"
+	//alertmanagerDockerfilePath = "alertmanager/Dockerfile"
+	//nodeExporterDockerfilePath = "node-exporter/Dockerfile"
+	grafanaSetupPath = "grafana/setup.sh"
 )
 
 type infoForCopy struct {
@@ -62,24 +63,30 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 		config,
 		clusterFile,
 	}
+	log.Println("Trying to install dos2unix")
+	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
 	relativePaths := [5]string{"alertmanager", "grafana", "node-exporter", "prometheus", dockerComposeFileName}
 	curDir := getCurrentDir()
 	for _, relativePath := range relativePaths {
 		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
 	}
-	filesToApplyTemplate := [3]string{alertmanagerDockerfilePath, nodeExporterDockerfilePath, dockerComposeFileName}
+	filesToApplyTemplate := [3]string{grafanaSetupPath, dockerComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
 		appliedBuffer := applyClusterFileTemplateToFile(fileToApplyTemplate, clusterFile)
 		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
 			appliedBuffer.String()+"\nEOF", config)
 		log.Println(fileToApplyTemplate, "applied by template")
 	}
-	log.Println("Trying to build alertmanager docker image from Dockerfile...")
-	sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.Alertmanager+
-		" swarmgo/alertmanager", config)
-	log.Println("Trying to build node-exporter docker image from Dockerfile...")
-	sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.NodeExporter+
-		" swarmgo/node-exporter", config)
+	//appliedBuffer := applyClusterFileTemplateToFile(dockerComposeFileName, clusterFile)
+	//execSSHCommand(host, "cat > ~/swarmgo/"+dockerComposeFileName+" << EOF\n\n"+
+	//	appliedBuffer.String()+"\nEOF", config)
+	//log.Println(dockerComposeFileName, "applied by template")
+	//log.Println("Trying to build alertmanager docker image from Dockerfile...")
+	//sudoExecSSHCommand(host, "docker build -t localhost:5000/"+clusterFile.Alertmanager+ " swarmgo/alertmanager", config)
+	//sudoExecSSHCommand(host, "docker push localhost:5000/"+clusterFile.Alertmanager, config)
+	//log.Println("Trying to build node-exporter docker image from Dockerfile...")
+	//sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.NodeExporter+
+	//	" swarmgo/node-exporter", config)
 	log.Println("Trying to deploy swarmprom")
 	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/docker-compose.yml prom", config)
 	log.Println("Swarmprom successfully deployed")
@@ -108,7 +115,9 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	relativePath := substringAfter(filePath, "untillpro/")
 	err := scp.CopyPath(filePath, relativePath, getSSHSession(forCopy.nodeEntry.node.Host, forCopy.config))
-	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "chmod +x "+relativePath, forCopy.config)
+	execSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
+	//if we want to create docker images locally we need to set files to executable
+	//sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "chmod 777 "+relativePath, forCopy.config)
 	CheckErr(err)
 	log.Println(relativePath, "copied on host")
 }
