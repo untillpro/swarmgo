@@ -53,9 +53,11 @@ var traefikCmd = &cobra.Command{
 }
 
 func applyClusterFileTemplateToFile(filePath string, clusterFile *clusterFile) *bytes.Buffer {
-	tmpl, err := template.ParseFiles(filePath)
+	t, err := template.ParseFiles(filePath)
+	t.Option("missingkey=default")
+	CheckErr(err)
 	var tmplBuffer bytes.Buffer
-	err = tmpl.Execute(&tmplBuffer, clusterFile)
+	err = t.Execute(&tmplBuffer, clusterFile)
 	CheckErr(err)
 	return &tmplBuffer
 }

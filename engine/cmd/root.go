@@ -24,8 +24,8 @@ const (
 	dockerComposeFileName      = "docker-compose.yml"
 )
 
-type clusterFile struct {
-	OrganizationName   string `yaml:"OrganizationName"`
+var clusterFile = map[string]interface{
+"OrganizationName"   string `yaml:"OrganizationName"`
 	ClusterName        string `yaml:"ClusterName"`
 	ClusterUser        string `yaml:"ClusterUser"`
 	Docker             string `yaml:"Docker"`

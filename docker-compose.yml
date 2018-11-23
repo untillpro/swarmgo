@@ -10,14 +10,17 @@ configs:
     file: ./prometheus/rules/swarm_node.rules.yml
   task_rules:
     file: ./prometheus/rules/swarm_task.rules.yml
+  #  alert_rules:
+  #    file: ./prometheus/rules/alert.rules
   prom_conf:
     file: ./prometheus/conf/prometheus.yml
+  am_conf:
+    file: ./alertmanager/conf/alertmanager.yml
 
 services:
 
   cadvisor:
     image: google/cadvisor:v0.31.0
-    container_name: cadvisor
     networks:
     - webgateway
     command: -docker_only
@@ -37,21 +40,17 @@ services:
 
   grafana:
     image: {{.Grafana}}
-    container_name: grafana
     networks:
     - webgateway
     environment:
     - GF_SECURITY_ADMIN_USER={{.GrafanaUser}}
     - GF_SECURITY_ADMIN_PASSWORD={{.GrafanaPassword}}
     - GF_USERS_ALLOW_SIGN_UP=false
-    - GF_PATHS_PROVISIONING=/etc/grafana/provisioning/
     - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
     volumes:
     - grafana:/var/lib/grafana
     - ./grafana/datasources:/etc/grafana/datasources
     - ./grafana/dashboards:/etc/grafana/dashboards
-    - ./grafana/setup.sh:/setup.sh
-    entrypoint: /setup.sh
     depends_on:
     - prometheus
     deploy:
@@ -73,21 +72,26 @@ services:
 
   alertmanager:
     image: {{.Alertmanager}}
-    container_name: alertmanager
     networks:
     - webgateway
-    environment:
-    - SLACK_URL={{.WebhookURL}}
-    - SLACK_CHANNEL={{.ChannelName}}
-    - SLACK_USER={{.AlertmanagerUser}}
     command:
     - '--config.file=/etc/alertmanager/alertmanager.yml'
     - '--storage.path=/alertmanager'
+    - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/alertmanager'
+    - '--web.route-prefix=/'
     volumes:
     - alertmanager:/alertmanager
+    configs:
+    - source: am_conf
+      target: /etc/alertmanager/alertmanager.yml
     deploy:
       mode: replicated
       replicas: 1
+      labels:
+      - traefik.enable=true
+      - traefik.frontend.rule=PathPrefixStrip:/alertmanager
+      - traefik.port=9093
+      - traefik.docker.network=webgateway
       placement:
         constraints:
         - node.role == manager
@@ -99,7 +103,6 @@ services:
 
   node-exporter:
     image: {{.NodeExporter}}
-    container_name: node-exporter
     networks:
     - webgateway
     environment:
@@ -128,7 +131,6 @@ services:
 
   prometheus:
     image: {{.Prometheus}}
-    container_name: prometheus
     networks:
     - webgateway
     command:
@@ -142,6 +144,8 @@ services:
     volumes:
     - prometheus:/prometheus
     configs:
+    #    - source: alert_rules
+    #      target: /etc/prometheus/alert.rules
     - source: node_rules
       target: /etc/prometheus/swarm_node.rules.yml
     - source: task_rules

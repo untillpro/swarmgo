@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	//alertmanagerDockerfilePath = "alertmanager/Dockerfile"
-	//nodeExporterDockerfilePath = "node-exporter/Dockerfile"
-	grafanaSetupPath = "grafana/setup.sh"
+	//	alertmanagerDockerfilePath = "alertmanager/Dockerfile"
+	//	nodeExporterDockerfilePath = "node-exporter/Dockerfile"
+	alertmanagerConfigPath = "alertmanager/conf/alertmanager.yml"
 )
 
 type infoForCopy struct {
@@ -70,7 +70,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	for _, relativePath := range relativePaths {
 		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
 	}
-	filesToApplyTemplate := [3]string{grafanaSetupPath, dockerComposeFileName}
+	filesToApplyTemplate := [2]string{alertmanagerConfigPath, dockerComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
 		appliedBuffer := applyClusterFileTemplateToFile(fileToApplyTemplate, clusterFile)
 		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
@@ -113,11 +113,13 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 }
 
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
+	host := forCopy.nodeEntry.node.Host
 	relativePath := substringAfter(filePath, "untillpro/")
-	err := scp.CopyPath(filePath, relativePath, getSSHSession(forCopy.nodeEntry.node.Host, forCopy.config))
-	execSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
+	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
+	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
 	//if we want to create docker images locally we need to set files to executable
-	//sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "chmod 777 "+relativePath, forCopy.config)
+	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)
+	sudoExecSSHCommand(host, "chmod 777 "+relativePath, forCopy.config)
 	CheckErr(err)
 	log.Println(relativePath, "copied on host")
 }
