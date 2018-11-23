@@ -24,8 +24,8 @@ const (
 	dockerComposeFileName      = "docker-compose.yml"
 )
 
-var clusterFile = map[string]interface{
-"OrganizationName"   string `yaml:"OrganizationName"`
+type clusterFile struct {
+	OrganizationName   string `yaml:"OrganizationName"`
 	ClusterName        string `yaml:"ClusterName"`
 	ClusterUser        string `yaml:"ClusterUser"`
 	Docker             string `yaml:"Docker"`
@@ -47,7 +47,7 @@ var clusterFile = map[string]interface{
 	WebhookURL         string `yaml:"WebhookURL"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
-	NodeID             string `yaml:"NodeID"`
+	//NodeID             string `yaml:"NodeID"`
 }
 
 var cfgFile string

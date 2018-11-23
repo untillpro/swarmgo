@@ -13,7 +13,7 @@ PrivateKey: ${HOME}/.ssh/$clusterName
 
 ## Software Versions
 
-Docker: 17.12.0~ce-0~ubuntu
+Docker: 18.03.0~ce-0~ubuntu
 
 # Containers without prefix "prom/" cause of we recreates them on each host with prefix {{.OrganizationName}}. Look at
 # alertmanager/Dockerfile and node-exporter/Dockerfile for more
@@ -50,5 +50,3 @@ TraefikUser: admin
 
 ChannelName: cluster
 AlertmanagerUser: alertmanager
-
-NodeID: "{{.Node.ID}}"
