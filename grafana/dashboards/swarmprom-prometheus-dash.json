@@ -363,7 +363,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "prometheus_tsdb_wal_corruptions_total{job=\"prometheus\"}",
+          "expr": "prometheus_tsdb_wal_truncations_failed_total{job=\"prometheus\"}",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",

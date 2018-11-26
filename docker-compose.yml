@@ -12,9 +12,6 @@ configs:
     file: ./prometheus/rules/swarm_task.rules.yml
   prom_conf:
     file: ./prometheus/conf/prometheus.yml
-  am_conf:
-    file: ./alertmanager/conf/alertmanager.yml
-
 
 services:
 
@@ -78,11 +75,10 @@ services:
     - '--storage.path=/alertmanager'
     - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/alertmanager'
     - '--web.route-prefix=/'
+    - '--log.level=debug'
     volumes:
     - alertmanager:/alertmanager
-    configs:
-    - source: am_conf
-      target: /etc/alertmanager/alertmanager.yml
+    - ./alertmanager:/etc/alertmanager
     deploy:
       mode: replicated
       replicas: 1
@@ -117,7 +113,7 @@ services:
     - '--collector.textfile.directory=/etc/node-exporter/'
     - '--no-collector.ipvs'
     - --collector.filesystem.ignored-mount-points
-    - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+    - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/vagrant|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
     deploy:
       mode: global
       resources:
@@ -125,20 +121,6 @@ services:
           memory: 128M
         reservations:
           memory: 64M
-
-  docker-exporter:
-    image: basi/socat
-    networks:
-      - webgateway
-    deploy:
-      mode: global
-      resources:
-        limits:
-          cpus: '0.05'
-          memory: 6M
-        reservations:
-          cpus: '0.05'
-          memory: 4M
 
   prometheus:
     image: {{.Prometheus}}
@@ -155,8 +137,6 @@ services:
     volumes:
     - prometheus:/prometheus
     configs:
-    #    - source: alert_rules
-    #      target: /etc/prometheus/alert.rules
     - source: node_rules
       target: /etc/prometheus/swarm_node.rules.yml
     - source: task_rules

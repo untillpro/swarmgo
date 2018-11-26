@@ -6,7 +6,6 @@ global:
     monitor: 'promswarm'
 
 rule_files:
-#  - 'alert.rules'
 - "swarm_node.rules.yml"
 - "swarm_task.rules.yml"
 
@@ -35,5 +34,3 @@ scrape_configs:
     - 'tasks.node-exporter'
     type: 'A'
     port: 9100
-
-

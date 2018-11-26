@@ -8,5 +8,7 @@ receivers:
     username: '{{.AlertmanagerUser}}'
     channel: '#{{.ChannelName}}'
     api_url: '{{.WebhookURL}}'
-    title: '{{"{{"}}.Annotations.summary{{"}}"}}'
-    text: '{{"{{"}}.Annotations.description{{"}}"}}'
+    title: '{{"{{"}} template "custom_title" . {{"}}"}}'
+    text: '{{"{{"}} template "custom_slack_message" . {{"}}"}}'
+templates:
+  - /etc/alertmanager/notifications.tmpl

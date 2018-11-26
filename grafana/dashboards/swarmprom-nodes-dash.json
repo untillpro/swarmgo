@@ -764,7 +764,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(node_filesystem_size_bytes * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"})",
+          "expr": "sum(node_filesystem_size_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"})",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -848,7 +848,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum((node_filesystem_free_bytes / node_filesystem_size_bytes) * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"} * 100) / count(node_meta * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"})",
+          "expr": "sum(node_filesystem_free_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) / sum(node_filesystem_size_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) * 100",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",

@@ -22,7 +22,7 @@ import (
 const (
 	//	alertmanagerDockerfilePath = "alertmanager/Dockerfile"
 	//	nodeExporterDockerfilePath = "node-exporter/Dockerfile"
-	alertmanagerConfigPath = "alertmanager/conf/alertmanager.yml"
+	alertmanagerConfigPath = "alertmanager/alertmanager.yml"
 )
 
 type infoForCopy struct {
@@ -77,16 +77,6 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 			appliedBuffer.String()+"\nEOF", config)
 		log.Println(fileToApplyTemplate, "applied by template")
 	}
-	//appliedBuffer := applyClusterFileTemplateToFile(dockerComposeFileName, clusterFile)
-	//execSSHCommand(host, "cat > ~/swarmgo/"+dockerComposeFileName+" << EOF\n\n"+
-	//	appliedBuffer.String()+"\nEOF", config)
-	//log.Println(dockerComposeFileName, "applied by template")
-	//log.Println("Trying to build alertmanager docker image from Dockerfile...")
-	//sudoExecSSHCommand(host, "docker build -t localhost:5000/"+clusterFile.Alertmanager+ " swarmgo/alertmanager", config)
-	//sudoExecSSHCommand(host, "docker push localhost:5000/"+clusterFile.Alertmanager, config)
-	//log.Println("Trying to build node-exporter docker image from Dockerfile...")
-	//sudoExecSSHCommand(host, "docker build -t "+clusterFile.OrganizationName+"/"+clusterFile.NodeExporter+
-	//	" swarmgo/node-exporter", config)
 	log.Println("Trying to deploy swarmprom")
 	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/docker-compose.yml prom", config)
 	log.Println("Swarmprom successfully deployed")
@@ -117,7 +107,6 @@ func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	relativePath := substringAfter(filePath, "untillpro/")
 	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
 	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
-	//if we want to create docker images locally we need to set files to executable
 	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chmod 777 "+relativePath, forCopy.config)
 	CheckErr(err)
