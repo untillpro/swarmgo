@@ -1,7 +1,7 @@
 # Organization Parameters
 
-OrganizationName: untill
-ClusterName: untill
+OrganizationName: untill-pro
+ClusterName: untill-pro
 
 # This user will be created on each node and given sudo permissions
 ClusterUser: cluster
@@ -13,7 +13,7 @@ PrivateKey: ${HOME}/.ssh/$clusterName
 
 ## Software Versions
 
-Docker: 18.03.0~ce-0~ubuntu
+Docker: 18.06.1~ce~3-0~ubuntu
 
 # Containers without prefix "prom/" cause of we recreates them on each host with prefix {{.OrganizationName}}. Look at
 # alertmanager/Dockerfile and node-exporter/Dockerfile for more
@@ -23,13 +23,14 @@ Grafana: grafana/grafana:5.3.4
 Prometheus: prom/prometheus:v2.5.0
 Traefik: traefik:1.7
 Cadvisor: google/cadvisor:v0.31.0
+Consul: consul:1.4.0
 
 ## ACME configuration
 
-# If enabled 
+# If enabled
 #   - ACME will be used through letsencrypt provider
 #   - traefik.yml is used to configure traefik, otherwise traefik-http.yml
-ACMEEnabled: false
+ACMEEnabled: true
 
 # If ACME is enabled the following paramaters are required
 Domain:

@@ -19,21 +19,14 @@ import (
 	"strings"
 )
 
-type swarmMode int
-
-const (
-	nodesFileName           = "nodes.yml"
-	worker        swarmMode = iota
-	manager
-	leader
-)
+const nodesFileName = "nodes.yml"
 
 type user struct {
 	host, alias, userName, passToRoot, passToUser string
 }
 type node struct {
 	Host, Alias, DockerVersion string
-	SwarmMode                  swarmMode
+	SwarmMode                  string
 	Traefik                    bool
 }
 
@@ -108,12 +101,11 @@ var addNodeCmd = &cobra.Command{
 				nodesChannel <- node
 			}(value)
 		}
-		nodes := make([]node, 0, len(args))
 		for range args {
-			nodes = append(nodes, <-nodesChannel)
+			nodesFromYaml = append(nodesFromYaml, <-nodesChannel)
 		}
 		close(nodesChannel)
-		marshaledNode, err := yaml.Marshal(&nodes)
+		marshaledNode, err := yaml.Marshal(&nodesFromYaml)
 		CheckErr(err)
 		nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
@@ -135,6 +127,7 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	logWithPrefix(host, "New user "+userName+" added")
 	execSSHCommand(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
 	execSSHCommand(host, "usermod -aG sudo "+userName, sshConfig)
+	execSSHCommand(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
 	logWithPrefix(host, "Sudo permissions given to "+userName)
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
@@ -144,7 +137,7 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	logWithPrefix(host, "Relogin from root to "+userName)
 	sudoExecSSHCommand(host, "passwd -l root", sshConfig)
 	logWithPrefix(host, "Root password disabled")
-	execSSHCommand(host, "mkdir ~/.ssh", sshConfig)
+	execSSHCommand(host, "mkdir -p ~/.ssh", sshConfig)
 	execSSHCommand(host, "chmod 700 ~/.ssh", sshConfig)
 	execSSHCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
 	execSSHCommand(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)

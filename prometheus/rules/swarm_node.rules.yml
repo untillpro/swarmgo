@@ -44,7 +44,7 @@ groups:
       identifier: "Disk fill alert for Swarm node {{ $labels.node_name }}"
   - alert: service_down
     expr: up == 0
-    for: 5m
+    for: 2m
     labels:
       severity: critical
     annotations:

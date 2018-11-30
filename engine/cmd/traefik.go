@@ -19,9 +19,19 @@ import (
 	"path/filepath"
 )
 
+const (
+	traefikComposeFileName     = "traefik.yml"
+	traefikTestComposeFileName = "traefik-http.yml"
+	consulComposeFileName      = "consul-cluster.yml"
+)
+
 type entry struct {
 	nodeName, userName string
 	node               node
+}
+
+type consul struct {
+	Bootstrap uint8
 }
 
 // traefikCmd represents the traefik command
@@ -37,10 +47,23 @@ var traefikCmd = &cobra.Command{
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
-		createTraefik(passToKey, clusterFile, firstEntry)
 		nodes := getNodesFromYml(getCurrentDir())
+		var bootstrap uint8
+		for _, node := range nodes {
+			if node.SwarmMode == manager {
+				bootstrap++
+			}
+		}
+		var bootstrapConsul consul
+		if bootstrap >= 3 {
+			bootstrapConsul.Bootstrap = 3
+		} else {
+			bootstrapConsul.Bootstrap = 1
+		}
+		deployConsul(bootstrapConsul, passToKey, clusterFile, firstEntry)
+		deployTraefik(passToKey, clusterFile, firstEntry)
 		for i, node := range nodes {
-			if node.SwarmMode == 3 {
+			if node.SwarmMode == leader {
 				nodes[i].Traefik = true
 			}
 		}
@@ -52,6 +75,10 @@ var traefikCmd = &cobra.Command{
 	},
 }
 
+func deployConsul(consul consul, passToKey string, clusterFile *clusterFile, firstEntry *entry) {
+
+}
+
 func applyClusterFileTemplateToFile(filePath string, clusterFile *clusterFile) *bytes.Buffer {
 	t, err := template.ParseFiles(filePath)
 	var tmplBuffer bytes.Buffer
@@ -60,7 +87,7 @@ func applyClusterFileTemplateToFile(filePath string, clusterFile *clusterFile) *
 	return &tmplBuffer
 }
 
-func createTraefik(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
+func deployTraefik(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
 	clusterName := clusterFile.ClusterName
 	host := firstEntry.node.Host
 	var traefikComposeName string

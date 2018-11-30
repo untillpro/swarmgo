@@ -20,9 +20,8 @@ import (
 )
 
 const (
-	//	alertmanagerDockerfilePath = "alertmanager/Dockerfile"
-	//	nodeExporterDockerfilePath = "node-exporter/Dockerfile"
-	alertmanagerConfigPath = "alertmanager/alertmanager.yml"
+	swarmpromComposeFileName = "swarmprom.yml"
+	alertmanagerConfigPath   = "alertmanager/alertmanager.yml"
 )
 
 type infoForCopy struct {
@@ -65,12 +64,12 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	}
 	log.Println("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
-	relativePaths := [5]string{"alertmanager", "grafana", "node-exporter", "prometheus", dockerComposeFileName}
+	relativePaths := [4]string{"alertmanager", "grafana", "prometheus", swarmpromComposeFileName}
 	curDir := getCurrentDir()
 	for _, relativePath := range relativePaths {
 		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
 	}
-	filesToApplyTemplate := [2]string{alertmanagerConfigPath, dockerComposeFileName}
+	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
 		appliedBuffer := applyClusterFileTemplateToFile(fileToApplyTemplate, clusterFile)
 		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
@@ -78,7 +77,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 		log.Println(fileToApplyTemplate, "applied by template")
 	}
 	log.Println("Trying to deploy swarmprom")
-	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/docker-compose.yml prom", config)
+	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/swarmprom.yml prom", config)
 	log.Println("Swarmprom successfully deployed")
 }
 

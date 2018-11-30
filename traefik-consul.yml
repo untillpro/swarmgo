@@ -1,0 +1,38 @@
+version: "3.5"
+services:
+  traefik:
+    image: traefik:1.7
+    command:
+      - "--consul"
+      - "--consul.endpoint=consul:8500"
+      - "--consul.prefix=traefik"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - webgateway
+      - traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      mode: replicated
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.backend=traefik
+        - traefik.frontend.rule=PathPrefixStrip:/traefik
+        - traefik.port=8080
+        - traefik.docker.network=webgateway
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+networks:
+  traefik:
+    external: true
+  webgateway:
+    external: true

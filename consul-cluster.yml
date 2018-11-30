@@ -1,0 +1,54 @@
+version: "3.5"
+
+volumes:
+  consul: {}
+
+configs:
+  agent:
+    file: ./consul/agent/conf.json
+  server:
+    file: ./consul/server/conf.json
+
+services:
+
+  server:
+    image: {{.Consul}}
+    command: "consul agent -config-file /consul/config/conf.json"
+    volumes:
+      - consul:/consul/data
+    configs:
+      - source: server
+        target: /consul/config/conf.json
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    networks:
+      traefik:
+        aliases:
+          - consul.server
+
+  agent:
+    image: {{.Consul}}
+    command: "consul agent -config-file /consul/config/conf.json"
+    volumes:
+      - consul:/consul/data
+    configs:
+      - source: agent
+        target: /consul/config/conf.json
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

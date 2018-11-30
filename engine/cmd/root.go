@@ -17,13 +17,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	swarmgoConfigFileName      = "swarmgo-config.yml"
-	traefikComposeFileName     = "traefik.yml"
-	traefikTestComposeFileName = "traefik-http.yml"
-	dockerComposeFileName      = "docker-compose.yml"
-)
-
 type clusterFile struct {
 	OrganizationName   string `yaml:"OrganizationName"`
 	ClusterName        string `yaml:"ClusterName"`
@@ -35,6 +28,7 @@ type clusterFile struct {
 	Grafana            string `yaml:"Grafana"`
 	Traefik            string `yaml:"Traefik"`
 	Cadvisor           string `yaml:"Cadvisor"`
+	Consul             string `yaml:"Consul"`
 	ACMEEnabled        bool   `yaml:"ACMEEnabled"`
 	Domain             string `yaml:"Domain"`
 	Email              string `yaml:"Email"`
@@ -47,7 +41,6 @@ type clusterFile struct {
 	WebhookURL         string `yaml:"WebhookURL"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
-	//NodeID             string `yaml:"NodeID"`
 }
 
 var cfgFile string

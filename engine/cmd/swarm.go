@@ -19,6 +19,13 @@ import (
 	"strings"
 )
 
+const (
+	worker                = "worker"
+	manager               = "manager"
+	leader                = "leader"
+	swarmgoConfigFileName = "swarmgo-config.yml"
+)
+
 var mode bool
 var swarmChan = make(chan node)
 
@@ -91,7 +98,7 @@ var swarmCmd = &cobra.Command{
 				joinToSwarm(nodeVar, clusterLeaderNode.Host, userName, passToKey, clusterFile.ClusterName)
 			}(key, value, passToKey)
 		}
-		for  key := range nodeAndUserName {
+		for key := range nodeAndUserName {
 			nodeHostAndNode[key.Host] = <-swarmChan
 		}
 		close(swarmChan)
@@ -217,7 +224,7 @@ func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
 		//if value.SwarmMode == 0 {
 		//	log.Fatal("All nodes must be in swarm! Node " + value.Host + " isn't part of the swarm")
 		//}
-		if value.SwarmMode == 3 {
+		if value.SwarmMode == leader {
 			fmt.Println("input user name for host " + value.Host)
 			for len(userName) == 0 {
 				fmt.Println("User name can't be empty!")
