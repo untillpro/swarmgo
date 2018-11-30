@@ -17,4 +17,4 @@ vendor/
 .*/
 Gopkg.lock
 assets/
-nodes.yml
+nodes*.yml
