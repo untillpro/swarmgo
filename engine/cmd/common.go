@@ -162,16 +162,6 @@ func findSSHKeys(clusterName string) (string, string) {
 	return publicKeyFile, privateKeyFile
 }
 
-func checkDockerInstallation(host, version string, config *ssh.ClientConfig) bool {
-	defer func() {
-		//just catching stderr from ubuntu because `docker` is unknown command
-		recover()
-	}()
-	exit := execSSHCommand(host, "docker -v", config)
-	trimmedVersion := strings.Split(version, "~")[0]
-	return strings.Contains(exit, trimmedVersion)
-}
-
 func convertStringToInt(s string) int {
 	convertExit, err := strconv.Atoi(strings.TrimSuffix(s, "\n"))
 	CheckErr(err)

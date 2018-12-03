@@ -109,7 +109,7 @@ var addNodeCmd = &cobra.Command{
 			nodeFromChannel := <-nodesChannel
 			switch nodeType := nodeFromChannel.(type) {
 			case node:
-				nodesFromYaml = append(nodesFromYaml, nodeType)
+				nodesFromYaml = append(nodesFromYaml, nodeFromChannel.(node))
 			case error:
 				log.Println(nodeType.Error())
 			}

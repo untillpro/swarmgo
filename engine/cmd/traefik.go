@@ -122,26 +122,9 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 	log.Println("Consul configs written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c consul/"+consulComposeFileName+" traefik", config)
 	log.Println("Consul deployed, wait for consul sync")
-	timer := time.NewTimer(5 * time.Minute)
-	doneChan := make(chan struct{})
-	go func() {
-		for true {
-			time.Sleep(10 * time.Second)
-			out := sudoExecSSHCommand(host, "docker service logs traefik_consul_server", config)
-			if strings.Contains(out, "Synced node info") {
-				doneChan <- struct{}{}
-				break
-			}
-		}
-	}()
-	select {
-	case <-doneChan:
-		log.Println("Consul synced")
-	case <-timer.C:
-		log.Fatal("Consul doesn't sync in five minutes, deployment stopped")
-	}
-	close(doneChan)
-	timer.Stop()
+	waitSuccessOrFailAfterTimer(host, "Synced node info", "Consul synced",
+		"Consul doesn't sync in five minutes, deployment stopped", "docker service logs traefik_consul_server",
+		5, config)
 }
 
 func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
@@ -153,14 +136,45 @@ func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *byt
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
+	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
+	out = strings.Trim(out, "\n ")
+	clusterFile.CurrentNodeId = out
 	tmplBuffer := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
 	sudoExecSSHCommand(host, "docker network create -d overlay webgateway || true", config)
 	log.Println("webgateway networks created")
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
-	log.Println("traefik.yml written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
+	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
+		"Cert doesn't received in five minutes, deployment stopped",
+		"docker service logs traefik_traefik | grep \"legolog\"", 3, config)
+	log.Println("traefik.yml written to host")
+	sudoExecSSHCommand(host, "docker service update --constraint-rm=\"node.id == "+out+"\" traefik_traefik", config)
 	log.Println("traefik deployed")
+}
+
+func waitSuccessOrFailAfterTimer(host, success, logSuccess, logFail, cmd string, timeBeforeFailInMinutes time.Duration,
+	config *ssh.ClientConfig) {
+	timer := time.NewTimer(timeBeforeFailInMinutes * time.Minute)
+	doneChan := make(chan struct{})
+	go func() {
+		for true {
+			time.Sleep(10 * time.Second)
+			out := sudoExecSSHCommand(host, cmd, config)
+			if strings.Contains(out, success) {
+				doneChan <- struct{}{}
+				break
+			}
+		}
+	}()
+	select {
+	case <-doneChan:
+		log.Println(logSuccess)
+	case <-timer.C:
+		log.Fatal(logFail)
+	}
+	close(doneChan)
+	timer.Stop()
 }
 
 func init() {

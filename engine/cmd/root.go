@@ -41,6 +41,7 @@ type clusterFile struct {
 	WebhookURL         string `yaml:"WebhookURL"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
+	CurrentNodeId      string
 }
 
 var cfgFile string

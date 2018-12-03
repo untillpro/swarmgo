@@ -1,7 +1,7 @@
 version: "3.5"
 services:
   traefik:
-    image: traefik:1.7
+    image: {{.Traefik}}
     command:
       - "--consul"
       - "--consul.endpoint=consul.server:8500"
@@ -19,6 +19,7 @@ services:
       placement:
         constraints:
           - node.role == manager
+          - node.id == {{.CurrentNodeId}}
       labels:
         - traefik.enable=true
         - traefik.backend=traefik
