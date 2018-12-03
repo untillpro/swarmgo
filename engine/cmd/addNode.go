@@ -39,7 +39,11 @@ var addNodeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Println("Error closing the file: ", err.Error())
+				}
+			}()
 		}
 		readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
@@ -105,14 +109,18 @@ var addNodeCmd = &cobra.Command{
 				}
 			}(value)
 		}
+		errMsgs := make([]string, 0, len(args))
 		for range args {
 			nodeFromChannel := <-nodesChannel
-			switch nodeType := nodeFromChannel.(type) {
+			switch nodeFromChannel.(type) {
 			case node:
 				nodesFromYaml = append(nodesFromYaml, nodeFromChannel.(node))
 			case error:
-				log.Println(nodeType.Error())
+				errMsgs = append(errMsgs, nodeFromChannel.(error).Error())
 			}
+		}
+		for _, errMsg := range errMsgs {
+			log.Println(errMsg)
 		}
 		close(nodesChannel)
 		marshaledNode, err := yaml.Marshal(&nodesFromYaml)

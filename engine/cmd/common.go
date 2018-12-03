@@ -200,7 +200,7 @@ func numberHostsFromNodesFile(nodesFromYml []node) string {
 func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	b := new(bytes.Buffer)
 	for k, v := range hostsWithNumbers {
-		fmt.Fprintf(b, "%d : %s\n", k, v)
+		fmt.Printf("%d : %s\n", k, v)
 	}
 	log.Println("\n" + b.String())
 	input := waitUserInput()

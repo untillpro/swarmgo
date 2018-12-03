@@ -48,7 +48,11 @@ var traefikCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Println("Error closing the file: ", err.Error())
+				}
+			}()
 		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()

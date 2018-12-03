@@ -34,7 +34,11 @@ var dockerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
-			defer f.Close()
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Println("Error closing the file: ", err.Error())
+				}
+			}()
 		}
 		clusterFile := unmarshalClusterYml()
 		dockerVersion := clusterFile.Docker
@@ -44,7 +48,23 @@ var dockerCmd = &cobra.Command{
 		}
 		alreadyInstalled := make([]node, 0, len(nodesFromYaml))
 		notInstalled := make([]node, 0, len(nodesFromYaml))
+		aliasesAndNodes := make(map[string]node)
 		for _, node := range nodesFromYaml {
+			aliasesAndNodes[node.Alias] = node
+		}
+		nodesForDocker := make([]node, 0, len(nodesFromYaml))
+		if len(args) != 0 {
+			for _, arg := range args {
+				val, ok := aliasesAndNodes[arg]
+				if !ok {
+					log.Fatal(val, "doesn't present in nodes.yml")
+				}
+				nodesForDocker = append(nodesForDocker, val)
+			}
+		} else {
+			nodesForDocker = nodesFromYaml
+		}
+		for _, node := range nodesForDocker {
 			if dockerVersion == node.DockerVersion {
 				log.Println("Docker already installer on " + node.Host)
 				alreadyInstalled = append(alreadyInstalled, node)
@@ -79,19 +99,25 @@ var dockerCmd = &cobra.Command{
 				channelForNodes <- nodeFromFunc
 			}(key, value)
 		}
-		nodes := make([]node, 0, len(args))
+		errMsgs := make([]string, 0, len(args))
 		for range nodeAndUserName {
 			nodeWithPossibleError := <-channelForNodes
 			node := nodeWithPossibleError.nodeWithPossibleError
 			err := nodeWithPossibleError.err
 			if nodeWithPossibleError.err != nil {
-				log.Printf("Host: %v, returns error: %v", node.Host,
-					err.Error())
+				errMsgs = append(errMsgs, fmt.Sprintf("Host: %v, returns error: %v", node.Host,
+					err.Error()))
 			}
-			nodes = append(nodes, node)
+			aliasesAndNodes[node.Alias] = node
 		}
-		nodes = append(nodes, alreadyInstalled...)
+		for _, errMsg := range errMsgs {
+			log.Println(errMsg)
+		}
 		close(channelForNodes)
+		nodes := make([]node, 0, len(aliasesAndNodes))
+		for _, val := range aliasesAndNodes {
+			nodes = append(nodes, val)
+		}
 		marshaledNode, err := yaml.Marshal(&nodes)
 		CheckErr(err)
 		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
