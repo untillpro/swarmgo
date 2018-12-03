@@ -71,7 +71,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	}
 	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
-		appliedBuffer := applyClusterFileTemplateToFile(fileToApplyTemplate, clusterFile)
+		appliedBuffer := applyExecutorToTemplateFile(fileToApplyTemplate, clusterFile)
 		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
 			appliedBuffer.String()+"\nEOF", config)
 		log.Println(fileToApplyTemplate, "applied by template")

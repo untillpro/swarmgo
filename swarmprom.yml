@@ -12,6 +12,20 @@ configs:
     file: ./prometheus/rules/swarm_task.rules.yml
   prom_conf:
     file: ./prometheus/conf/prometheus.yml
+  alert_conf:
+    file: ./alertmanager/alertmanager.yml
+  alert_tmpl:
+    file: ./alertmanager/notifications.tmpl
+  gf_ds:
+    file: ./grafana/datasources/prometheus.yml
+  gf_dbs:
+    file: ./grafana/dashboards/swarmprom_dashboards.yml
+  gf_db1:
+    file: ./grafana/dashboards/swarmprom-nodes-dash.json
+  gf_db2:
+    file: ./grafana/dashboards/swarmprom-prometheus-dash.json
+  gf_db3:
+    file: ./grafana/dashboards/swarmprom-services-dash.json
 
 services:
 
@@ -45,8 +59,17 @@ services:
     - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
     volumes:
     - grafana:/var/lib/grafana
-    - ./grafana/datasources:/etc/grafana/provisioning/datasources
-    - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    configs:
+      - source: gf_ds
+        target: /etc/grafana/provisioning/datasources/prometheus.yml
+      - source: gf_dbs
+        target: /etc/grafana/provisioning/dashboards/swarmprom_dashboards.yml
+      - source: gf_db1
+        target: /etc/grafana/provisioning/dashboards/swarmprom-nodes-dash.json
+      - source: gf_db2
+        target: /etc/grafana/provisioning/dashboards/swarmprom-prometheus-dash.json
+      - source: gf_db3
+        target: /etc/grafana/provisioning/dashboards/swarmprom-services-dash.json
     depends_on:
     - prometheus
     deploy:
@@ -78,7 +101,11 @@ services:
     - '--log.level=debug'
     volumes:
     - alertmanager:/alertmanager
-    - ./alertmanager:/etc/alertmanager
+    configs:
+      - source: alert_conf
+        target: /etc/alertmanager/alertmanager.yml
+      - source: alert_tmpl
+        target: /etc/alertmanager/notifications.tmpl
     deploy:
       mode: replicated
       replicas: 1
@@ -146,8 +173,7 @@ services:
     depends_on:
     - cadvisor
     deploy:
-      mode: replicated
-      replicas: 1
+      mode: global
       placement:
         constraints:
         - node.role == manager

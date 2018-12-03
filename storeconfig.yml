@@ -1,6 +1,6 @@
 version: '3.5'
 services:
-  traefik_init:
+  storeconfig:
     image: traefik:1.7
     command:
       - "storeconfig"
@@ -25,13 +25,16 @@ services:
       - "--docker.domain={{.Domain}}"
       - "--docker.watch"
       - "--consul"
-      - "--consul.endpoint=consul:8500"
+      - "--consul.endpoint=consul.server:8500"
       - "--consul.prefix=traefik"
     networks:
       - traefik
     deploy:
       restart_policy:
         condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
 
 networks:
   traefik:

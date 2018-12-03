@@ -89,20 +89,30 @@ var addNodeCmd = &cobra.Command{
 			user.passToUser = waitUserInput()
 			users[index] = user
 		}
-		nodesChannel := make(chan node)
+		nodesChannel := make(chan interface{})
 		for _, value := range users {
 			go func(user user) {
 				//passToRoot to user and key from input
-				configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
-				node := node{
-					Host:  user.host,
-					Alias: user.alias,
+				err := configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
+				if err != nil {
+					nodesChannel <- err
+				} else {
+					nodeFromFunc := node{
+						Host:  user.host,
+						Alias: user.alias,
+					}
+					nodesChannel <- nodeFromFunc
 				}
-				nodesChannel <- node
 			}(value)
 		}
 		for range args {
-			nodesFromYaml = append(nodesFromYaml, <-nodesChannel)
+			nodeFromChannel := <-nodesChannel
+			switch nodeType := nodeFromChannel.(type) {
+			case node:
+				nodesFromYaml = append(nodesFromYaml, nodeType)
+			case error:
+				log.Println(nodeType.Error())
+			}
 		}
 		close(nodesChannel)
 		marshaledNode, err := yaml.Marshal(&nodesFromYaml)
@@ -113,7 +123,7 @@ var addNodeCmd = &cobra.Command{
 	},
 }
 
-func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) {
+func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) error {
 	host := user.host
 	userName := user.userName
 	logWithPrefix(host, "Host "+host)
@@ -123,11 +133,23 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
-	execSSHCommand(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
+	_, err := execSSHCommandWithoutPanic(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "New user "+userName+" added")
-	execSSHCommand(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
-	execSSHCommand(host, "usermod -aG sudo "+userName, sshConfig)
-	execSSHCommand(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
+	_, err = execSSHCommandWithoutPanic(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "usermod -aG sudo "+userName, sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "Sudo permissions given to "+userName)
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
@@ -135,27 +157,63 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToUser)},
 	}
 	logWithPrefix(host, "Relogin from root to "+userName)
-	sudoExecSSHCommand(host, "passwd -l root", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "passwd -l root", sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "Root password disabled")
-	execSSHCommand(host, "mkdir -p ~/.ssh", sshConfig)
-	execSSHCommand(host, "chmod 700 ~/.ssh", sshConfig)
-	execSSHCommand(host, "touch ~/.ssh/authorized_keys", sshConfig)
-	execSSHCommand(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
+	_, err = execSSHCommandWithoutPanic(host, "mkdir -p ~/.ssh", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "chmod 700 ~/.ssh", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "touch ~/.ssh/authorized_keys", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
+	if err != nil {
+		return err
+	}
 	//read public key
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
-	CheckErr(err)
-	execSSHCommand(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = execSSHCommandWithoutPanic(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "Host public key added to remote server")
-	sudoExecSSHCommand(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
+	_, err = sudoExecSSHCommandWithoutPanic(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, host+" password auth disabled")
-	sudoExecSSHCommand(host, "sudo service ssh restart", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "sudo service ssh restart", sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "SSH reloaded")
 	sshConfig = initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
-	sudoExecSSHCommand(host, "ufw allow OpenSSH", sshConfig)
-	sudoExecSSHCommand(host, "yes | sudo ufw enable", sshConfig)
-	sudoExecSSHCommand(host, "ufw reload", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow OpenSSH", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = sudoExecSSHCommandWithoutPanic(host, "yes | sudo ufw enable", sshConfig)
+	if err != nil {
+		return err
+	}
+	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw reload", sshConfig)
+	if err != nil {
+		return err
+	}
 	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
+	return nil
 }
 
 func init() {

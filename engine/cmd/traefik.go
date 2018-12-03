@@ -12,17 +12,23 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 const (
-	traefikComposeFileName     = "traefik.yml"
+	traefikComposeFileName     = "traefik-consul.yml"
 	traefikTestComposeFileName = "traefik-http.yml"
+	traefikStoreConfigFileName = "storeconfig.yml"
 	consulComposeFileName      = "consul-cluster.yml"
+	consulServerConfFileName   = "consul/server/conf.json"
+	consulAgentConfFileName    = "consul/agent/conf.json"
 )
 
 type entry struct {
@@ -48,20 +54,23 @@ var traefikCmd = &cobra.Command{
 		passToKey := waitUserInput()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getCurrentDir())
-		var bootstrap uint8
-		for _, node := range nodes {
-			if node.SwarmMode == manager {
-				bootstrap++
+		host := firstEntry.node.Host
+		var config = findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+		sudoExecSSHCommand(host, "docker network create -d overlay traefik || true", config)
+		var traefikComposeName string
+		if clusterFile.ACMEEnabled {
+			traefikComposeName = traefikComposeFileName
+			log.Println("Traefik in production mode will be deployed")
+			if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
+				log.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
 			}
-		}
-		var bootstrapConsul consul
-		if bootstrap >= 3 {
-			bootstrapConsul.Bootstrap = 3
+			deployConsul(nodes, clusterFile, host, config)
+			storeTraefikConfigInConsul(clusterFile, host, config)
 		} else {
-			bootstrapConsul.Bootstrap = 1
+			traefikComposeName = traefikTestComposeFileName
+			log.Println("Traefik in test mode (in localhost) will be deployed")
 		}
-		deployConsul(bootstrapConsul, passToKey, clusterFile, firstEntry)
-		deployTraefik(passToKey, clusterFile, firstEntry)
+		deployTraefik(clusterFile, host, traefikComposeName, config)
 		for i, node := range nodes {
 			if node.SwarmMode == leader {
 				nodes[i].Traefik = true
@@ -71,41 +80,83 @@ var traefikCmd = &cobra.Command{
 		CheckErr(err)
 		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
+		log.Println("Nodes written in file")
 		CheckErr(err)
 	},
 }
 
-func deployConsul(consul consul, passToKey string, clusterFile *clusterFile, firstEntry *entry) {
-
+func storeTraefikConfigInConsul(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
+	log.Println("Traefik store config started")
+	execSSHCommand(host, "mkdir -p ~/traefik", config)
+	traefikStoreConfig := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikStoreConfigFileName), clusterFile)
+	execSSHCommand(host, "cat > ~/traefik/"+traefikStoreConfigFileName+" << EOF\n\n"+traefikStoreConfig.String()+"\nEOF", config)
+	sudoExecSSHCommand(host, "docker stack deploy -c traefik/"+traefikStoreConfigFileName+" traefik", config)
+	log.Println("Traefik configs stored in consul")
 }
 
-func applyClusterFileTemplateToFile(filePath string, clusterFile *clusterFile) *bytes.Buffer {
+func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
+	log.Println("Consul deployment started")
+	var bootstrap uint8
+	for _, node := range nodes {
+		if node.SwarmMode == manager || node.SwarmMode == leader {
+			bootstrap++
+		}
+	}
+	var bootstrapConsul consul
+	if bootstrap >= 3 {
+		bootstrapConsul.Bootstrap = 3
+	} else {
+		bootstrapConsul.Bootstrap = 1
+	}
+	log.Printf("Num of managers: %v, bootstrap expect: %v", bootstrap, bootstrapConsul.Bootstrap)
+	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulAgentConfFileName))
+	CheckErr(err)
+	consulServerConf := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), consulServerConfFileName), bootstrapConsul)
+	consulCompose := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), consulComposeFileName), clusterFile)
+	log.Println("Consul configs modified")
+	execSSHCommand(host, "mkdir -p ~/consul/agent", config)
+	execSSHCommand(host, "mkdir -p ~/consul/server", config)
+	execSSHCommand(host, "cat > ~/"+consulAgentConfFileName+" << EOF\n\n"+string(consulAgentConf)+"\nEOF", config)
+	execSSHCommand(host, "cat > ~/"+consulServerConfFileName+" << EOF\n\n"+consulServerConf.String()+"\nEOF", config)
+	execSSHCommand(host, "cat > ~/consul/"+consulComposeFileName+" << EOF\n\n"+consulCompose.String()+"\nEOF", config)
+	log.Println("Consul configs written to host")
+	sudoExecSSHCommand(host, "docker stack deploy -c consul/"+consulComposeFileName+" traefik", config)
+	log.Println("Consul deployed, wait for consul sync")
+	timer := time.NewTimer(5 * time.Minute)
+	doneChan := make(chan struct{})
+	go func() {
+		for true {
+			time.Sleep(10 * time.Second)
+			out := sudoExecSSHCommand(host, "docker service logs traefik_consul_server", config)
+			if strings.Contains(out, "Synced node info") {
+				doneChan <- struct{}{}
+				break
+			}
+		}
+	}()
+	select {
+	case <-doneChan:
+		log.Println("Consul synced")
+	case <-timer.C:
+		log.Fatal("Consul doesn't sync in five minutes, deployment stopped")
+	}
+	close(doneChan)
+	timer.Stop()
+}
+
+func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
 	t, err := template.ParseFiles(filePath)
 	var tmplBuffer bytes.Buffer
-	err = t.Execute(&tmplBuffer, clusterFile)
+	err = t.Execute(&tmplBuffer, tmplExecutor)
 	CheckErr(err)
 	return &tmplBuffer
 }
 
-func deployTraefik(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
-	clusterName := clusterFile.ClusterName
-	host := firstEntry.node.Host
-	var traefikComposeName string
-	if clusterFile.ACMEEnabled {
-		traefikComposeName = traefikComposeFileName
-		if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
-			log.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
-		}
-	} else {
-		traefikComposeName = traefikTestComposeFileName
-	}
-	tmplBuffer := applyClusterFileTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
+func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
+	tmplBuffer := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
-	config := findSSHKeysAndInitConnection(clusterName, firstEntry.userName, passToKey)
-	sudoExecSSHCommand(host, "docker network create -d overlay traefik || true", config)
 	sudoExecSSHCommand(host, "docker network create -d overlay webgateway || true", config)
-	log.Println("overlay networks created")
-	execSSHCommand(host, "mkdir -p ~/traefik", config)
+	log.Println("webgateway networks created")
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	log.Println("traefik.yml written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)

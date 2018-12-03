@@ -5,13 +5,13 @@ volumes:
 
 configs:
   agent:
-    file: ./consul/agent/conf.json
+    file: ./agent/conf.json
   server:
-    file: ./consul/server/conf.json
+    file: ./server/conf.json
 
 services:
 
-  server:
+  consul_server:
     image: {{.Consul}}
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
@@ -21,17 +21,20 @@ services:
         target: /consul/config/conf.json
     deploy:
       mode: global
+      endpoint_mode: dnsrr
       placement:
         constraints:
           - node.role == manager
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        window: 120s
     networks:
       traefik:
         aliases:
           - consul.server
 
-  agent:
+  consul_agent:
     image: {{.Consul}}
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
@@ -41,13 +44,18 @@ services:
         target: /consul/config/conf.json
     deploy:
       mode: global
+      endpoint_mode: dnsrr
       placement:
         constraints:
           - node.role == worker
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
+        window: 120s
     networks:
-      - traefik
+      traefik:
+        aliases:
+          - consul.server
 
 networks:
   traefik:

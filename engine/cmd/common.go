@@ -60,19 +60,27 @@ func sudoExecSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 	return execSSHCommand(host, "sudo "+cmd, config)
 }
 
+func sudoExecSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
+	return execSSHCommandWithoutPanic(host, "sudo "+cmd, config)
+}
+
 func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
-	conn, err := ssh.Dial("tcp", host+":22", config)
-	CheckErr(err)
-	bs, err := execSSHCommandWithoutPanic(cmd, conn)
+	bs, err := execSSHCommandWithoutPanic(host, cmd, config)
 	if err != nil {
 		panic(string(bs))
 	}
 	return string(bs)
 }
 
-func execSSHCommandWithoutPanic(cmd string, conn *ssh.Client) (string, error) {
+func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
+	conn, err := ssh.Dial("tcp", host+":22", config)
+	if err != nil {
+		return "", err
+	}
 	session, err := conn.NewSession()
-	CheckErr(err)
+	if err != nil {
+		return "", err
+	}
 	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
