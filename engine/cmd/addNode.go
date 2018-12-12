@@ -22,7 +22,7 @@ import (
 const nodesFileName = "nodes.yml"
 
 type user struct {
-	host, alias, userName, passToRoot, passToUser string
+	host, alias, userName, passToRoot, rootUserName string
 }
 type node struct {
 	Host, Alias, DockerVersion string
@@ -47,6 +47,10 @@ var addNodeCmd = &cobra.Command{
 		}
 		readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
 		clusterFile := unmarshalClusterYml()
+		rootUserName := clusterFile.RootUserName
+		if strings.Trim(rootUserName, " \n") == "" {
+			rootUserName = "root"
+		}
 		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile.ClusterName)
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
@@ -82,15 +86,11 @@ var addNodeCmd = &cobra.Command{
 			userAndAlias := strings.Split(arg, "=")
 			user.alias = userAndAlias[0]
 			user.host = userAndAlias[1]
-			fmt.Println("input user name for host " + user.host)
-			for len(user.userName) == 0 {
-				fmt.Println("User name can't be empty!")
-				user.userName = waitUserInput()
-			}
-			fmt.Println("input password for root user of " + user.host)
+			user.rootUserName = rootUserName
+			user.userName = clusterFile.ClusterUserName
+			fmt.Println("cluster user name for host is " + user.userName)
+			fmt.Println("input password for " + user.rootUserName + " user of " + user.host)
 			user.passToRoot = waitUserInput()
-			fmt.Println("input password for new user of " + user.host)
-			user.passToUser = waitUserInput()
 			users[index] = user
 		}
 		nodesChannel := make(chan interface{})
@@ -137,7 +137,7 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	logWithPrefix(host, "Host "+host)
 	logWithPrefix(host, "Connecting to remote servers root with password..")
 	sshConfig := &ssh.ClientConfig{
-		User:            "root",
+		User:            user.rootUserName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
@@ -145,8 +145,9 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	if err != nil {
 		return err
 	}
+	pass := generateRandomString(32)
 	logWithPrefix(host, "New user "+userName+" added")
-	_, err = execSSHCommandWithoutPanic(host, "echo \""+userName+":"+user.passToUser+"\" | sudo chpasswd", sshConfig)
+	_, err = execSSHCommandWithoutPanic(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
 	if err != nil {
 		return err
 	}
@@ -162,10 +163,10 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.Password(user.passToUser)},
+		Auth:            []ssh.AuthMethod{ssh.Password(pass)},
 	}
 	logWithPrefix(host, "Relogin from root to "+userName)
-	_, err = sudoExecSSHCommandWithoutPanic(host, "passwd -l root", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "passwd -l "+user.rootUserName, sshConfig)
 	if err != nil {
 		return err
 	}

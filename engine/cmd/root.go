@@ -18,21 +18,22 @@ import (
 )
 
 type clusterFile struct {
-	OrganizationName   string `yaml:"OrganizationName"`
-	ClusterName        string `yaml:"ClusterName"`
-	ClusterUser        string `yaml:"ClusterUser"`
-	Docker             string `yaml:"Docker"`
-	Alertmanager       string `yaml:"Alertmanager"`
-	NodeExporter       string `yaml:"NodeExporter"`
-	Prometheus         string `yaml:"Prometheus"`
-	Grafana            string `yaml:"Grafana"`
-	Traefik            string `yaml:"Traefik"`
-	Cadvisor           string `yaml:"Cadvisor"`
-	Consul             string `yaml:"Consul"`
-	ACMEEnabled        bool   `yaml:"ACMEEnabled"`
-	Domain             string `yaml:"Domain"`
-	Email              string `yaml:"Email"`
-	GrafanaUser        string `yaml:"GrafanaUser"`
+	OrganizationName string `yaml:"OrganizationName"`
+	ClusterName      string `yaml:"ClusterName"`
+	RootUserName     string `yaml:"RootUserName"`
+	ClusterUserName  string `yaml:"ClusterUserName"`
+	Docker           string `yaml:"Docker"`
+	Alertmanager     string `yaml:"Alertmanager"`
+	NodeExporter     string `yaml:"NodeExporter"`
+	Prometheus       string `yaml:"Prometheus"`
+	Grafana          string `yaml:"Grafana"`
+	Traefik          string `yaml:"Traefik"`
+	Cadvisor         string `yaml:"Cadvisor"`
+	Consul           string `yaml:"Consul"`
+	ACMEEnabled      bool   `yaml:"ACMEEnabled"`
+	Domain           string `yaml:"Domain"`
+	Email            string `yaml:"Email"`
+	GrafanaUser      string `yaml:"GrafanaUser"`
 	GrafanaPassword    string `yaml:"GrafanaPassword"`
 	PrometheusUser     string `yaml:"PrometheusUser"`
 	PrometheusPassword string `yaml:"PrometheusPassword"`

@@ -16,8 +16,7 @@ services:
     ports:
     - "80:80"
     deploy:
-      mode: replicated
-      replicas: 1
+      mode: global
       labels:
       - traefik.enable=true
       - traefik.backend=traefik

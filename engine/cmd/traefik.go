@@ -70,11 +70,13 @@ var traefikCmd = &cobra.Command{
 			}
 			deployConsul(nodes, clusterFile, host, config)
 			storeTraefikConfigInConsul(clusterFile, host, config)
+			deployTraefikSSL(clusterFile, host, config)
 		} else {
+			execSSHCommand(host, "mkdir -p ~/traefik", config)
 			traefikComposeName = traefikTestComposeFileName
 			log.Println("Traefik in test mode (in localhost) will be deployed")
+			deployTraefik(clusterFile, host, traefikComposeName, config)
 		}
-		deployTraefik(clusterFile, host, traefikComposeName, config)
 		for i, node := range nodes {
 			if node.SwarmMode == leader {
 				nodes[i].Traefik = true
@@ -140,15 +142,20 @@ func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *byt
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
-	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
-	out = strings.Trim(out, "\n ")
-	clusterFile.CurrentNodeId = out
 	tmplBuffer := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
 	sudoExecSSHCommand(host, "docker network create -d overlay webgateway || true", config)
 	log.Println("webgateway networks created")
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
+	log.Println("traefik deployed")
+}
+
+func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
+	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
+	out = strings.Trim(out, "\n ")
+	clusterFile.CurrentNodeId = out
+	deployTraefik(clusterFile, host, traefikComposeFileName, config)
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
 		"docker service logs traefik_traefik | grep \"legolog\"", 3, config)

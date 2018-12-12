@@ -14,10 +14,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/crypto/ssh"
@@ -81,7 +83,11 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			log.Println("Error closing the file: ", err.Error())
+		}
+	}()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return string(bs), err
@@ -256,4 +262,15 @@ func getCurrentDir() string {
 	pwd, err := os.Getwd()
 	CheckErr(err)
 	return pwd
+}
+
+func generateRandomString(length int) string {
+	charset := "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
 }

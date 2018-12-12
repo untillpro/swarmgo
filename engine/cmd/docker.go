@@ -77,30 +77,20 @@ var dockerCmd = &cobra.Command{
 		}
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
-		nodeAndUserName := make(map[node]string)
-		for _, node := range notInstalled {
-			var userName string
-			fmt.Println("input user name for host " + node.Host)
-			for len(userName) == 0 {
-				fmt.Println("User name can't be empty!")
-				userName = waitUserInput()
-			}
-			nodeAndUserName[node] = userName
-		}
 		var channelForNodes = make(chan nodeAndError)
-		for key, value := range nodeAndUserName {
-			go func(node node, userName string) {
-				config := findSSHKeysAndInitConnection(clusterFile.ClusterName, userName, passToKey)
+		for _, currentNode := range notInstalled {
+			go func(node node) {
+				config := findSSHKeysAndInitConnection(clusterFile.ClusterName, clusterFile.ClusterUserName, passToKey)
 				nodeFromGoroutine, err := installDocker(node, dockerVersion, config)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
 				}
 				channelForNodes <- nodeFromFunc
-			}(key, value)
+			}(currentNode)
 		}
 		errMsgs := make([]string, 0, len(args))
-		for range nodeAndUserName {
+		for range notInstalled {
 			nodeWithPossibleError := <-channelForNodes
 			node := nodeWithPossibleError.nodeWithPossibleError
 			err := nodeWithPossibleError.err
