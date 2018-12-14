@@ -83,11 +83,7 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if err := session.Close(); err != nil {
-			log.Println("Error closing the file: ", err.Error())
-		}
-	}()
+	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
 		return string(bs), err

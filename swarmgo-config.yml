@@ -4,7 +4,8 @@ OrganizationName: untill
 ClusterName: untill
 
 # This user will be used for first login to node through SSH. Password login MUST be enabled, after ClusterUser creation
-# login to root through password or public key will be disabled
+# login to root through password or public key will be disabled. If you use custom root user name you should check
+# what this user can run "sudo" commands without password
 RootUserName: root
 
 # This user will be created on each node and given sudo permissions
