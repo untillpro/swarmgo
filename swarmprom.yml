@@ -32,14 +32,14 @@ services:
   cadvisor:
     image: google/cadvisor:v0.31.0
     networks:
-    - webgateway
+      - webgateway
     command: -docker_only
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock:ro
-    - /:/rootfs:ro
-    - /var/run:/var/run:rw
-    - /sys:/sys:ro
-    - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     deploy:
       mode: global
       resources:
@@ -51,14 +51,14 @@ services:
   grafana:
     image: {{.Grafana}}
     networks:
-    - webgateway
+      - webgateway
     environment:
-    - GF_SECURITY_ADMIN_USER={{.GrafanaUser}}
-    - GF_SECURITY_ADMIN_PASSWORD={{.GrafanaPassword}}
-    - GF_USERS_ALLOW_SIGN_UP=false
-    - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
+      - GF_SECURITY_ADMIN_USER={{.GrafanaUser}}
+      - GF_SECURITY_ADMIN_PASSWORD={{.GrafanaPassword}}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
     volumes:
-    - grafana:/var/lib/grafana
+      - grafana:/var/lib/grafana
     configs:
       - source: gf_ds
         target: /etc/grafana/provisioning/datasources/prometheus.yml
@@ -71,18 +71,18 @@ services:
       - source: gf_db3
         target: /etc/grafana/provisioning/dashboards/swarmprom-services-dash.json
     depends_on:
-    - prometheus
+      - prometheus
     deploy:
       mode: replicated
       replicas: 1
       labels:
-      - traefik.enable=true
-      - traefik.frontend.rule=PathPrefixStrip:/grafana
-      - traefik.port=3000
-      - traefik.docker.network=webgateway
+        - traefik.enable=true
+        - traefik.frontend.rule=PathPrefixStrip:/grafana
+        - traefik.port=3000
+        - traefik.docker.network=webgateway
       placement:
         constraints:
-        - node.role == manager
+          - node.role == manager
       resources:
         limits:
           memory: 128M
@@ -92,15 +92,15 @@ services:
   alertmanager:
     image: {{.Alertmanager}}
     networks:
-    - webgateway
+      - webgateway
     command:
-    - '--config.file=/etc/alertmanager/alertmanager.yml'
-    - '--storage.path=/alertmanager'
-    - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/alertmanager'
-    - '--web.route-prefix=/'
-    - '--log.level=debug'
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/alertmanager'
+      - '--web.route-prefix=/'
+      - '--log.level=debug'
     volumes:
-    - alertmanager:/alertmanager
+      - alertmanager:/alertmanager
     configs:
       - source: alert_conf
         target: /etc/alertmanager/alertmanager.yml
@@ -110,13 +110,13 @@ services:
       mode: replicated
       replicas: 1
       labels:
-      - traefik.enable=true
-      - traefik.frontend.rule=PathPrefixStrip:/alertmanager
-      - traefik.port=9093
-      - traefik.docker.network=webgateway
+        - traefik.enable=true
+        - traefik.frontend.rule=PathPrefixStrip:/alertmanager
+        - traefik.port=9093
+        - traefik.docker.network=webgateway
       placement:
         constraints:
-        - node.role == manager
+          - node.role == manager
       resources:
         limits:
           memory: 128M
@@ -126,21 +126,21 @@ services:
   node-exporter:
     image: {{.NodeExporter}}
     networks:
-    - webgateway
+      - webgateway
     environment:
       - NODE_ID={{"{{"}}.Node.ID{{"}}"}}
     volumes:
-    - /proc:/host/proc:ro
-    - /sys:/host/sys:ro
-    - /:/rootfs:ro
-    - /etc/hostname:/etc/nodename
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /etc/hostname:/etc/nodename
     command:
-    - '--path.sysfs=/host/sys'
-    - '--path.procfs=/host/proc'
-    - '--collector.textfile.directory=/etc/node-exporter/'
-    - '--no-collector.ipvs'
-    - --collector.filesystem.ignored-mount-points
-    - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/vagrant|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+      - '--path.sysfs=/host/sys'
+      - '--path.procfs=/host/proc'
+      - '--collector.textfile.directory=/etc/node-exporter/'
+      - '--no-collector.ipvs'
+      - --collector.filesystem.ignored-mount-points
+      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/vagrant|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
     deploy:
       mode: global
       resources:
@@ -152,36 +152,36 @@ services:
   prometheus:
     image: {{.Prometheus}}
     networks:
-    - webgateway
+      - webgateway
     command:
-    - '--config.file=/etc/prometheus/prometheus.yml'
-    - '--web.console.libraries=/etc/prometheus/console_libraries'
-    - '--web.console.templates=/etc/prometheus/consoles'
-    - '--storage.tsdb.path=/prometheus'
-    - '--storage.tsdb.retention=24h'
-    - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/prometheus'
-    - '--web.route-prefix=/'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=24h'
+      - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/prometheus'
+      - '--web.route-prefix=/'
     volumes:
-    - prometheus:/prometheus
+      - prometheus:/prometheus
     configs:
-    - source: node_rules
-      target: /etc/prometheus/swarm_node.rules.yml
-    - source: task_rules
-      target: /etc/prometheus/swarm_task.rules.yml
-    - source: prom_conf
-      target: /etc/prometheus/prometheus.yml
+      - source: node_rules
+        target: /etc/prometheus/swarm_node.rules.yml
+      - source: task_rules
+        target: /etc/prometheus/swarm_task.rules.yml
+      - source: prom_conf
+        target: /etc/prometheus/prometheus.yml
     depends_on:
-    - cadvisor
+      - cadvisor
     deploy:
       mode: global
       placement:
         constraints:
-        - node.role == manager
+          - node.role == manager
       labels:
-      - traefik.enable=true
-      - traefik.frontend.rule=PathPrefixStrip:/prometheus
-      - traefik.port=9090
-      - traefik.docker.network=webgateway
+        - traefik.enable=true
+        - traefik.frontend.rule=PathPrefixStrip:/prometheus
+        - traefik.port=9090
+        - traefik.docker.network=webgateway
       resources:
         limits:
           memory: 2048M

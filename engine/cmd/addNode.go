@@ -134,28 +134,29 @@ var addNodeCmd = &cobra.Command{
 func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) error {
 	host := user.host
 	userName := user.userName
+	rootUserName := user.rootUserName
 	logWithPrefix(host, "Host "+host)
 	logWithPrefix(host, "Connecting to remote servers root with password..")
 	sshConfig := &ssh.ClientConfig{
-		User:            user.rootUserName,
+		User:            rootUserName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
-	_, err := execSSHCommandWithoutPanic(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
+	_, err := sudoExecSSHCommandWithoutPanic(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
 	if err != nil {
 		return err
 	}
 	pass := generateRandomString(32)
 	logWithPrefix(host, "New user "+userName+" added")
-	_, err = execSSHCommandWithoutPanic(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
 	if err != nil {
 		return err
 	}
-	_, err = execSSHCommandWithoutPanic(host, "usermod -aG sudo "+userName, sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "usermod -aG sudo "+userName, sshConfig)
 	if err != nil {
 		return err
 	}
-	_, err = execSSHCommandWithoutPanic(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
 	if err != nil {
 		return err
 	}

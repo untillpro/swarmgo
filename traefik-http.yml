@@ -4,31 +4,31 @@ services:
   traefik:
     image: {{.Traefik}}
     command:
-    - --docker
-    - --docker.exposedbydefault=false
-    - --docker.swarmMode
-    - --docker.watch
-    - --docker.domain=localhost
-    - --api
-    - --logLevel=INFO
+      - --docker
+      - --docker.exposedbydefault=false
+      - --docker.swarmMode
+      - --docker.watch
+      - --docker.domain=localhost
+      - --api
+      - --logLevel=INFO
     networks:
-    - webgateway
+      - webgateway
     ports:
-    - "80:80"
+      - "80:80"
     deploy:
       mode: global
       labels:
-      - traefik.enable=true
-      - traefik.backend=traefik
-      - traefik.frontend.rule=PathPrefixStrip:/traefik
-      - traefik.port=8080
-      - traefik.docker.network=webgateway
+        - traefik.enable=true
+        - traefik.backend=traefik
+        - traefik.frontend.rule=PathPrefixStrip:/traefik
+        - traefik.port=8080
+        - traefik.docker.network=webgateway
       placement:
         constraints:
-        - node.role == manager
+          - node.role == manager
 
     volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   webgateway:
