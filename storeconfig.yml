@@ -1,0 +1,41 @@
+version: '3.5'
+services:
+  storeconfig:
+    image: traefik:1.7
+    command:
+      - "storeconfig"
+      - "--api"
+      - "--logLevel=info"
+      - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
+      - "--entrypoints=Name:https Address::443 TLS"
+      - "--defaultentrypoints=http,https"
+      - "--acme"
+      - "--acme.acmelogging=true"
+      - "--acme.overridecertificates=true"
+      - "--acme.storage=traefik/acme/account"
+      - "--acme.entryPoint=https"
+      - "--acme.httpChallenge.entryPoint=http"
+      - "--acme.onHostRule=true"
+      - "--acme.onDemand=false"
+      - "--acme.email={{.Email}}"
+      - "--acme.domains={{.Domain}}"
+      - "--docker"
+      - "--docker.exposedbydefault=false"
+      - "--docker.swarmMode"
+      - "--docker.domain={{.Domain}}"
+      - "--docker.watch"
+      - "--consul"
+      - "--consul.endpoint=consul.server:8500"
+      - "--consul.prefix=traefik"
+    networks:
+      - traefik
+    deploy:
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  traefik:
+    external: true

@@ -1,0 +1,14 @@
+route:
+  receiver: 'slack'
+
+receivers:
+- name: 'slack'
+  slack_configs:
+  - send_resolved: true
+    username: '{{.AlertmanagerUser}}'
+    channel: '#{{.ChannelName}}'
+    api_url: '{{.WebhookURL}}'
+    title: '{{"{{"}} template "custom_title" . {{"}}"}}'
+    text: '{{"{{"}} template "custom_slack_message" . {{"}}"}}'
+templates:
+  - /etc/alertmanager/notifications.tmpl
