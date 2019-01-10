@@ -16,6 +16,8 @@ services:
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
       - consul:/consul/data
+    environment:
+      - CONSUL_HTTP_ADDR=consul.server:8500
     configs:
       - source: server
         target: /consul/config/conf.json
@@ -39,6 +41,8 @@ services:
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
       - consul:/consul/data
+    environment:
+      - CONSUL_HTTP_ADDR=consul.server:8500
     configs:
       - source: agent
         target: /consul/config/conf.json

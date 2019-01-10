@@ -29,6 +29,7 @@ Prometheus: prom/prometheus:v2.5.0
 Traefik: traefik:1.7
 Cadvisor: google/cadvisor:v0.31.0
 Consul: consul:1.4.0
+ElasticVersion: 6.5.4
 
 ## ACME configuration
 

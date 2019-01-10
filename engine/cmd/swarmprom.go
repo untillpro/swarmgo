@@ -58,7 +58,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	clusterFile.GrafanaPassword = waitUserInput()
 	fmt.Println("Enter webhook URL for alertmanager")
 	clusterFile.WebhookURL = waitUserInput()
-	//don't forget to implement passwords for prometheus and traefik
+	//TODO don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
 	config := findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
 	forCopy := infoForCopy{
@@ -82,7 +82,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	}
 	log.Println("Trying to deploy swarmprom")
 	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/swarmprom.yml prom", config)
-	log.Println("Swarmprom successfully deployed")
+	log.Println("Swarmprom deployed")
 }
 
 func copyToHost(forCopy *infoForCopy, src string) {
