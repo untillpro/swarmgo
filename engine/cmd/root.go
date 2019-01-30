@@ -42,7 +42,9 @@ type clusterFile struct {
 	WebhookURL         string `yaml:"WebhookURL"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
+	Elastic            string `yaml:"Elastic"`
 	CurrentNodeId      string
+	KibanaCreds        string
 }
 
 var cfgFile string
