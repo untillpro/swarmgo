@@ -10,10 +10,11 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"path/filepath"
-
-	"github.com/spf13/cobra"
+	"strings"
 )
 
 const eLKComposeFileName = "elk.yml"
@@ -35,6 +36,12 @@ var eLKCmd = &cobra.Command{
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
+		fmt.Println("Enter Kibana login")
+		kibanaUser := waitUserInput()
+		fmt.Println("Enter Kibana password")
+		kibanaPass := waitUserInput()
+		kibanaHashedPass := strings.Replace(hashPassword(kibanaPass),"$","\\$\\$", -1)
+		clusterFile.KibanaCreds = fmt.Sprintf("%s:%s", kibanaUser, kibanaHashedPass)
 		if !firstEntry.node.Traefik {
 			log.Fatal("Need to deploy traefik before elk deploy")
 		}
@@ -67,6 +74,14 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 	log.Println("Trying to deploy ELK")
 	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/elk.yml elk", config)
 	log.Println("ELK deployed")
+}
+
+func hashPassword(password string) string {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		panic(err)
+	}
+	return string(hash)
 }
 
 func init() {

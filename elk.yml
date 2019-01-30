@@ -11,7 +11,7 @@ volumes:
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:{{.ElasticVersion}}
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:{{.Elastic}}
     environment:
       - cluster.name=docker-cluster
       - network.publish_host=_eth0_
@@ -34,7 +34,7 @@ services:
       - webgateway
 
   filebeat:
-    image: kindratte/filebeat:{{.ElasticVersion}}
+    image: kindratte/filebeat:{{.Elastic}}
     deploy:
       mode: global
       resources:
@@ -52,11 +52,12 @@ services:
       - webgateway
 
   kibana:
-    image: docker.elastic.co/kibana/kibana-oss:{{.ElasticVersion}}
+    image: docker.elastic.co/kibana/kibana-oss:{{.Elastic}}
     environment:
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      SERVER_BASEPATH: /kibana
-      SERVER_REWRITEBASEPATH: "true"
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SERVER_BASEPATH=/kibana
+      - SERVER_NAME={{.Domain}}
+      - SERVER_REWRITEBASEPATH=true
     deploy:
       mode: replicated
       resources:
@@ -70,11 +71,12 @@ services:
         - traefik.frontend.rule=PathPrefix:/kibana
         - traefik.port=5601
         - traefik.docker.network=webgateway
+        - traefik.frontend.auth.basic.users={{.KibanaCreds}}
     networks:
       - webgateway
 
   logstash:
-    image: docker.elastic.co/logstash/logstash-oss:{{.ElasticVersion}}
+    image: docker.elastic.co/logstash/logstash-oss:{{.Elastic}}
     configs:
       - source: ls_conf
         target: /usr/share/logstash/pipeline/logstash.conf

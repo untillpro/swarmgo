@@ -148,7 +148,6 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, co
 	log.Println("webgateway networks created")
 	execSSHCommand(host, "cat > ~/traefik/traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c traefik/traefik.yml traefik", config)
-	log.Println("traefik deployed")
 }
 
 func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
@@ -182,6 +181,7 @@ func waitSuccessOrFailAfterTimer(host, success, logSuccess, logFail, cmd string,
 	case <-doneChan:
 		log.Println(logSuccess)
 	case <-timer.C:
+		close(doneChan)
 		log.Fatal(logFail)
 	}
 	close(doneChan)
