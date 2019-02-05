@@ -1,0 +1,21 @@
+version: '3.3'
+
+services:
+  curator:
+    image: {{.Curator}}
+    deploy:
+      mode: replicated
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+      placement:
+        constraints:
+          - node.id==spfzsjpwayn987ct939vcvflo
+    networks:
+      - webgateway
+
+networks:
+  webgateway:
+    external: true

@@ -11,7 +11,7 @@ volumes:
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:{{.Elastic}}
+    image: {{.Elasticsearch}}
     environment:
       - cluster.name=docker-cluster
       - network.publish_host=_eth0_
@@ -34,7 +34,7 @@ services:
       - webgateway
 
   filebeat:
-    image: kindratte/filebeat:{{.Elastic}}
+    image: {{.Filebeat}}
     deploy:
       mode: global
       resources:
@@ -52,7 +52,7 @@ services:
       - webgateway
 
   kibana:
-    image: docker.elastic.co/kibana/kibana-oss:{{.Elastic}}
+    image: {{.Kibana}}
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - SERVER_BASEPATH=/kibana
@@ -76,7 +76,7 @@ services:
       - webgateway
 
   logstash:
-    image: docker.elastic.co/logstash/logstash-oss:{{.Elastic}}
+    image: {{.Logstash}}
     configs:
       - source: ls_conf
         target: /usr/share/logstash/pipeline/logstash.conf

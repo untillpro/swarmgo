@@ -29,7 +29,11 @@ Prometheus: prom/prometheus:v2.5.0
 Traefik: traefik:1.7
 Cadvisor: google/cadvisor:v0.31.0
 Consul: consul:1.4.0
-Elastic: 6.5.4
+Elasticsearch: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
+Filebeat: kindratte/filebeat:6.5.4
+Kibana: docker.elastic.co/kibana/kibana-oss:6.5.4
+Logstash: docker.elastic.co/logstash/logstash-oss:6.5.4
+Curator: kindratte/curator:5.6
 
 ## ACME configuration
 
