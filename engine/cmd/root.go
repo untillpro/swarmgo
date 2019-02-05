@@ -42,7 +42,11 @@ type clusterFile struct {
 	WebhookURL         string `yaml:"WebhookURL"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
-	Elastic            string `yaml:"Elastic"`
+	Elasticsearch      string `yaml:"Elasticsearch"`
+	Filebeat           string `yaml:"Filebeat"`
+	Kibana             string `yaml:"Kibana"`
+	Logstash           string `yaml:"Logstash"`
+	Curator            string `yaml:"Curator"`
 	CurrentNodeId      string
 	KibanaCreds        string
 }

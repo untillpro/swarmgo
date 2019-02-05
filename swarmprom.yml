@@ -30,7 +30,7 @@ configs:
 services:
 
   cadvisor:
-    image: google/cadvisor:v0.31.0
+    image: {{.Cadvisor}}
     networks:
       - webgateway
     command: -docker_only
