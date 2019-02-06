@@ -15,6 +15,7 @@
 .glide/
 debug
 .*/
-Gopkg.lock
 assets/
+vendor/
+Gopkg.lock
 nodes*.yml
