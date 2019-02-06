@@ -71,9 +71,28 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 			appliedBuffer.String()+"\nEOF", config)
 		log.Println(fileToApplyTemplate, "applied by template")
 	}
+	log.Println("Increasing vm.max_map_count")
+	increaseVmMaxMapCount(passToKey, clusterFile)
+	log.Println("Increased")
 	log.Println("Trying to deploy ELK")
 	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/elk.yml elk", config)
 	log.Println("ELK deployed")
+}
+
+func increaseVmMaxMapCount(passToKey string, clusterFile *clusterFile) {
+	nodesFromYml := getNodesFromYml(getCurrentDir())
+	doneChannel := make(chan struct{})
+	for _, value := range nodesFromYml {
+		go func(node node) {
+			config := findSSHKeysAndInitConnection(clusterFile.ClusterName, clusterFile.ClusterUserName, passToKey)
+			sudoExecSSHCommand(node.Host, "sysctl -w vm.max_map_count=262144", config)
+			doneChannel <- struct{}{}
+		}(value)
+	}
+	for range nodesFromYml {
+		<-doneChannel
+	}
+	close(doneChannel)
 }
 
 func hashPassword(password string) string {

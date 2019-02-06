@@ -5,6 +5,9 @@ Prerequestes:
 - Go
 - sh
 - git
+- Need opportunity to use sudo command on all nodes without password:
+  - use `sudo visudo`
+  - modify `%sudo   ALL=(ALL:ALL) ALL` to `%sudo   ALL=(ALL:ALL) NOPASSWD: ALL`
 
 Steps:
 
