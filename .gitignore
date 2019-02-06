@@ -14,7 +14,6 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 debug
-vendor/
 .*/
 Gopkg.lock
 assets/
