@@ -1,18 +1,11 @@
-FROM python:3.6-alpine3.6 as builder
+FROM alpine:latest
 
-RUN apk --no-cache add build-base tar musl-utils openssl-dev
-RUN pip3 install setuptools cx_Freeze==6.0b1 requests-aws4auth boto3
+RUN apk --update add python py-setuptools py-pip && \
+    pip install elasticsearch-curator==5.4.0 && \
+    apk del py-pip && \
+    rm -rf /var/cache/apk/*
 
-COPY . .
-RUN ln -s /lib/libc.musl-x86_64.so.1 ldd
-RUN ln -s /lib /lib64
-RUN pip3 install -r requirements.txt
-RUN python3 setup.py build_exe
+COPY entrypoint.sh /usr/bin/entrypoint.sh
+RUN chmod +x /usr/bin/entrypoint.sh
 
-FROM alpine:3.6
-RUN apk --no-cache upgrade && apk --no-cache add ca-certificates
-COPY --from=builder build/exe.linux-x86_64-3.6 /curator/
-COPY untill/ /curator/untill/
-USER nobody:nobody
-ENTRYPOINT ["0 0 * * * /curator/curator"]
-CMD ["--config", "/curator/untill/curator.yml", "/curator/untill/delete_indices.yml"]
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]

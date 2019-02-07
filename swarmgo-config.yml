@@ -6,7 +6,7 @@ ClusterName: untill
 # This user will be used for first login to node through SSH. Password login MUST be enabled, after ClusterUser creation
 # login to root through password or public key will be disabled. If you use custom root user name you should check
 # what this user can run "sudo" commands without password
-RootUserName: root
+RootUserName: untilltest
 
 # This user will be created on each node and given sudo permissions
 ClusterUserName: cluster
@@ -33,18 +33,18 @@ Elasticsearch: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
 Filebeat: kindratte/filebeat:6.5.4
 Kibana: docker.elastic.co/kibana/kibana-oss:6.5.4
 Logstash: docker.elastic.co/logstash/logstash-oss:6.5.4
-Curator: kindratte/curator:5.6
+Curator: kindratte/curator:5.4
 
 ## ACME configuration
 
 # If enabled
 #   - ACME will be used through letsencrypt provider
 #   - traefik.yml is used to configure traefik, otherwise traefik-http.yml
-ACMEEnabled: false
+ACMEEnabled: true
 
 # If ACME is enabled the following paramaters are required
-Domain:
-Email:
+Domain: dc0.untill.ru
+Email: v.kuslin@gmail.com
 
 ## Credentials
 
