@@ -17,13 +17,16 @@ import (
 	"strings"
 )
 
-const eLKComposeFileName = "elk.yml"
+const (
+	eLKPrefix          = "elk"
+	eLKComposeFileName = eLKPrefix + "/elk.yml"
+)
 
 // eLKCmd represents the elastic command
 var eLKCmd = &cobra.Command{
 	Use:   "elk",
 	Short: "Deploy ELK stack",
-	Long: `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
+	Long:  `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if logs {
 			f := redirectLogs()
@@ -40,7 +43,7 @@ var eLKCmd = &cobra.Command{
 		kibanaUser := waitUserInput()
 		fmt.Println("Enter Kibana password")
 		kibanaPass := waitUserInput()
-		kibanaHashedPass := strings.Replace(hashPassword(kibanaPass),"$","\\$\\$", -1)
+		kibanaHashedPass := strings.Replace(hashPassword(kibanaPass), "$", "\\$\\$", -1)
 		clusterFile.KibanaCreds = fmt.Sprintf("%s:%s", kibanaUser, kibanaHashedPass)
 		if !firstEntry.node.Traefik {
 			log.Fatal("Need to deploy traefik before elk deploy")
@@ -59,38 +62,43 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 	}
 	log.Println("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
-	relativePaths := [3]string{"filebeat", "logstash", eLKComposeFileName}
 	curDir := getCurrentDir()
-	for _, relativePath := range relativePaths {
-		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
-	}
-	filesToApplyTemplate := [1]string{eLKComposeFileName}
-	for _, fileToApplyTemplate := range filesToApplyTemplate {
-		appliedBuffer := applyExecutorToTemplateFile(fileToApplyTemplate, clusterFile)
-		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
-			appliedBuffer.String()+"\nEOF", config)
-		log.Println(fileToApplyTemplate, "applied by template")
-	}
+	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
+	appliedBuffer := applyExecutorToTemplateFile(eLKComposeFileName, clusterFile)
+	execSSHCommand(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
+		appliedBuffer.String()+"\nEOF", config)
+	log.Println(eLKComposeFileName, "applied by template")
 	log.Println("Increasing vm.max_map_count")
 	increaseVmMaxMapCount(passToKey, clusterFile)
 	log.Println("Increased")
 	log.Println("Trying to deploy ELK")
-	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/elk.yml elk", config)
+	sudoExecSSHCommand(host, "docker stack deploy -c "+eLKComposeFileName+" elk", config)
 	log.Println("ELK deployed")
 }
 
 func increaseVmMaxMapCount(passToKey string, clusterFile *clusterFile) {
 	nodesFromYml := getNodesFromYml(getCurrentDir())
-	doneChannel := make(chan struct{})
+	doneChannel := make(chan interface{})
 	for _, value := range nodesFromYml {
 		go func(node node) {
 			config := findSSHKeysAndInitConnection(clusterFile.ClusterName, clusterFile.ClusterUserName, passToKey)
-			sudoExecSSHCommand(node.Host, "sysctl -w vm.max_map_count=262144", config)
+			_, err := sudoExecSSHCommandWithoutPanic(node.Host, "sysctl -w vm.max_map_count=262144", config)
+			if err != nil {
+				doneChannel <- err
+			}
 			doneChannel <- struct{}{}
 		}(value)
 	}
+	errors := make([]error, 0, len(nodesFromYml))
 	for range nodesFromYml {
-		<-doneChannel
+		out := <-doneChannel
+		switch out.(type) {
+		case error:
+			errors = append(errors, out.(error))
+		}
+	}
+	if len(errors) != 0 {
+		log.Fatal(errors)
 	}
 	close(doneChannel)
 }
