@@ -13,9 +13,8 @@ Steps:
 
 - Fork swarmgo repo to `mycluster`
 - git clone `mycluster`
-- Run `dep init`
 - Run `go build swarmgo.go` to build swarmgo executable
-- Edit `clusterfile.yml` and other configs
+- Edit `swarmgo-config.yml` and other configs
 - Run `swarmgo node add <Alias1>=<IP1> <Alias2>=<IP2>`
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
