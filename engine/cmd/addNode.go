@@ -45,13 +45,13 @@ var addNodeCmd = &cobra.Command{
 				}
 			}()
 		}
-		readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
+		readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
 		clusterFile := unmarshalClusterYml()
 		rootUserName := clusterFile.RootUserName
 		if strings.Trim(rootUserName, " \n") == "" {
 			rootUserName = "root"
 		}
-		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile.ClusterName)
+		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {

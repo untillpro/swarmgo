@@ -54,7 +54,7 @@ var eLKCmd = &cobra.Command{
 
 func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
 	host := firstEntry.node.Host
-	config := findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+	config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 	forCopy := infoForCopy{
 		firstEntry,
 		config,
@@ -81,7 +81,7 @@ func increaseVmMaxMapCount(passToKey string, clusterFile *clusterFile) {
 	doneChannel := make(chan interface{})
 	for _, value := range nodesFromYml {
 		go func(node node) {
-			config := findSSHKeysAndInitConnection(clusterFile.ClusterName, clusterFile.ClusterUserName, passToKey)
+			config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 			_, err := sudoExecSSHCommandWithoutPanic(node.Host, "sysctl -w vm.max_map_count=262144", config)
 			if err != nil {
 				doneChannel <- err

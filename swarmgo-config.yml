@@ -12,9 +12,11 @@ RootUserName: untilltest
 ClusterUserName: cluster
 
 # Key Locations
+# If empty keys will be created in ${HOME}/.ssh/${ClusterName}, if ${HOME} don't set create keys in ${executable folder}/
+# .ssh/${ClusterName}
 
-PublickKey: ${HOME}/.ssh/$clusterName.pub
-PrivateKey: ${HOME}/.ssh/$clusterName
+PublicKey:
+PrivateKey:
 
 ## Software Versions
 

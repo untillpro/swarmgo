@@ -62,7 +62,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	clusterFile.WebhookURL = waitUserInput()
 	//TODO don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
-	config := findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+	config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 	forCopy := infoForCopy{
 		firstEntry,
 		config,

@@ -147,19 +147,24 @@ func waitUserInput() string {
 	return strings.Trim(input, "\n\r ")
 }
 
-func findSSHKeys(clusterName string) (string, string) {
-	publicKeyName := ".ssh/" + clusterName + ".pub"
-	privateKeyName := ".ssh/" + clusterName
-	home, err := homedir.Dir()
-	CheckErr(err)
+func findSSHKeys(clusterFile *clusterFile) (string, string) {
 	var publicKeyFile string
 	var privateKeyFile string
-	if len(home) > 0 {
-		publicKeyFile = filepath.Join(home, publicKeyName)
-		privateKeyFile = filepath.Join(home, privateKeyName)
+	if len(clusterFile.PublicKey) != 0 && len(clusterFile.PrivateKey) != 0 {
+		publicKeyFile = clusterFile.PublicKey
+		privateKeyFile = clusterFile.PrivateKey
 	} else {
-		publicKeyFile = appendChildToExecutablePath(publicKeyName)
-		privateKeyFile = appendChildToExecutablePath(privateKeyName)
+		publicKeyFile = ".ssh/" + clusterFile.ClusterName + ".pub"
+		privateKeyFile = ".ssh/" + clusterFile.ClusterName
+		home, err := homedir.Dir()
+		CheckErr(err)
+		if len(home) > 0 {
+			publicKeyFile = filepath.Join(home, publicKeyFile)
+			privateKeyFile = filepath.Join(home, privateKeyFile)
+		} else {
+			publicKeyFile = appendChildToExecutablePath(publicKeyFile)
+			privateKeyFile = appendChildToExecutablePath(privateKeyFile)
+		}
 	}
 	return publicKeyFile, privateKeyFile
 }
@@ -222,12 +227,12 @@ func unmarshalClusterYml() *clusterFile {
 	return &clusterFileStruct
 }
 
-func findSSHKeysAndInitConnection(clusterName, userName, passToKey string) *ssh.ClientConfig {
-	_, privateKeyFile := findSSHKeys(clusterName)
+func findSSHKeysAndInitConnection(passToKey string, config *clusterFile) *ssh.ClientConfig {
+	_, privateKeyFile := findSSHKeys(config)
 	if !checkFileExistence(privateKeyFile) {
 		log.Fatal("Can't find private key to connect to remote server!")
 	}
-	return initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
+	return initSSHConnectionConfigWithPublicKeys(config.ClusterUserName, privateKeyFile, passToKey)
 }
 
 func substringAfterIncludeValue(value string, a string) string {

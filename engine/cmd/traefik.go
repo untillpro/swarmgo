@@ -61,7 +61,7 @@ var traefikCmd = &cobra.Command{
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getCurrentDir())
 		host := firstEntry.node.Host
-		var config = findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+		var config = findSSHKeysAndInitConnection(passToKey, clusterFile)
 		sudoExecSSHCommand(host, "docker network create -d overlay traefik || true", config)
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {

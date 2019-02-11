@@ -80,7 +80,7 @@ var dockerCmd = &cobra.Command{
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range notInstalled {
 			go func(node node) {
-				config := findSSHKeysAndInitConnection(clusterFile.ClusterName, clusterFile.ClusterUserName, passToKey)
+				config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 				nodeFromGoroutine, err := installDocker(node, dockerVersion, config)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
