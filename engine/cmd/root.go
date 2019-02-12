@@ -22,6 +22,8 @@ type clusterFile struct {
 	ClusterName        string `yaml:"ClusterName"`
 	RootUserName       string `yaml:"RootUserName"`
 	ClusterUserName    string `yaml:"ClusterUserName"`
+	PublicKey          string `yaml:"PublicKey"`
+	PrivateKey         string `yaml:"PrivateKey"`
 	Docker             string `yaml:"Docker"`
 	Alertmanager       string `yaml:"Alertmanager"`
 	NodeExporter       string `yaml:"NodeExporter"`

@@ -20,8 +20,10 @@ import (
 )
 
 const (
-	swarmpromComposeFileName = "swarmprom.yml"
-	alertmanagerConfigPath   = "alertmanager/alertmanager.yml"
+	swarmgoPrefix            = "swarmgo/"
+	swarmpromFolder          = "swarmprom"
+	swarmpromComposeFileName = swarmpromFolder + "/swarmprom.yml"
+	alertmanagerConfigPath   = swarmpromFolder + "/alertmanager/alertmanager.yml"
 )
 
 type infoForCopy struct {
@@ -60,7 +62,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	clusterFile.WebhookURL = waitUserInput()
 	//TODO don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
-	config := findSSHKeysAndInitConnection(clusterFile.ClusterName, firstEntry.userName, passToKey)
+	config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 	forCopy := infoForCopy{
 		firstEntry,
 		config,
@@ -68,20 +70,17 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	}
 	log.Println("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
-	relativePaths := [4]string{"alertmanager", "grafana", "prometheus", swarmpromComposeFileName}
 	curDir := getCurrentDir()
-	for _, relativePath := range relativePaths {
-		copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, relativePath)))
-	}
+	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, swarmpromFolder)))
 	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
 		appliedBuffer := applyExecutorToTemplateFile(fileToApplyTemplate, clusterFile)
-		execSSHCommand(host, "cat > ~/swarmgo/"+fileToApplyTemplate+" << EOF\n\n"+
+		execSSHCommand(host, "cat > ~/"+fileToApplyTemplate+" << EOF\n\n"+
 			appliedBuffer.String()+"\nEOF", config)
 		log.Println(fileToApplyTemplate, "applied by template")
 	}
 	log.Println("Trying to deploy swarmprom")
-	sudoExecSSHCommand(host, "docker stack deploy -c swarmgo/swarmprom.yml prom", config)
+	sudoExecSSHCommand(host, "docker stack deploy -c "+swarmpromComposeFileName+" prom", config)
 	log.Println("Swarmprom deployed")
 }
 
@@ -96,7 +95,7 @@ func copyToHost(forCopy *infoForCopy, src string) {
 }
 
 func copyDirToHost(dirPath string, forCopy *infoForCopy) {
-	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, "untillpro/"), forCopy.config)
+	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, swarmgoPrefix), forCopy.config)
 	dirContent, err := ioutil.ReadDir(dirPath)
 	CheckErr(err)
 	for _, dirEntry := range dirContent {
@@ -107,7 +106,7 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	host := forCopy.nodeEntry.node.Host
-	relativePath := substringAfter(filePath, "untillpro/")
+	relativePath := substringAfter(filePath, swarmgoPrefix)
 	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
 	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)

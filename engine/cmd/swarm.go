@@ -90,14 +90,14 @@ var swarmCmd = &cobra.Command{
 		var nodeVar node
 		if clusterLeaderNode == (node{}) {
 			nodeVar, nodesWithoutSwarm = initSwarm(nodesFromYml, nodesWithoutSwarm, args, passToKey,
-				clusterFile.ClusterName, clusterFile.ClusterUserName)
+				clusterFile)
 			nodeHostAndNode[nodeVar.Host] = nodeVar
 			clusterLeaderNode = nodeVar
 		}
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range nodesWithoutSwarm {
 			go func(nodeVar node, passToKey string) {
-				nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, clusterFile.ClusterUserName, passToKey, clusterFile.ClusterName)
+				nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, passToKey, clusterFile)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
@@ -154,13 +154,13 @@ func reloadUfwAndDocker(host string, config *ssh.ClientConfig) error {
 }
 
 func initSwarm(nodesFromYml []node, nodes []node, args []string,
-	passToKey, clusterName, clusterUserName string) (node, []node) {
+	passToKey string, file *clusterFile) (node, []node) {
 	log.Println("Need to initiate swarm leader")
 	var alias string
 	alias = args[0]
 	node, index := findNodeByAliasFromNodesYml(alias, nodesFromYml)
 	host := node.Host
-	config := findSSHKeysAndInitConnection(clusterName, clusterUserName, passToKey)
+	config := findSSHKeysAndInitConnection(passToKey, file)
 	err := configUfwToWorkInSwarmMode(host, config)
 	CheckErr(err)
 	log.Println("Starting swarm initialization...")
@@ -191,7 +191,7 @@ func findNodeByAliasFromNodesYml(alias string, nodesFromYml []node) (node, int) 
 	return leaderNode, index
 }
 
-func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, [] node, [] node) {
+func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, []node, []node) {
 	var clusterLeaderHost node
 	var clusterManagerHosts []node
 	var clusterWorkersHost []node
@@ -237,9 +237,9 @@ func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) error {
 	return nil
 }
 
-func joinToSwarm(node node, leaderHost, userName, passToKey, clusterName string) (node, error) {
+func joinToSwarm(node node, leaderHost, passToKey string, file *clusterFile) (node, error) {
 	host := node.Host
-	config := findSSHKeysAndInitConnection(clusterName, userName, passToKey)
+	config := findSSHKeysAndInitConnection(passToKey, file)
 	err := configUfwToWorkInSwarmMode(host, config)
 	if err != nil {
 		return node, err

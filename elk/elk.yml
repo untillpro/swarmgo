@@ -89,6 +89,17 @@ services:
     networks:
       - webgateway
 
+  curator:
+    image: {{.Curator}}
+    environment:
+      - CRON=0 * * * *
+      - KEEP_DAYS=15
+      - INDEX_PREFIX=filebeat-
+      - HOST=elasticsearch
+      - CHRONO_UNIT=days
+    networks:
+      - webgateway
+
 networks:
   webgateway:
     external: true

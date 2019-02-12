@@ -6,15 +6,17 @@ ClusterName: untill
 # This user will be used for first login to node through SSH. Password login MUST be enabled, after ClusterUser creation
 # login to root through password or public key will be disabled. If you use custom root user name you should check
 # what this user can run "sudo" commands without password
-RootUserName: root
+RootUserName: untilltest
 
 # This user will be created on each node and given sudo permissions
 ClusterUserName: cluster
 
 # Key Locations
+# If empty keys will be created in ${HOME}/.ssh/${ClusterName}, if ${HOME} don't set create keys in ${executable folder}/
+# .ssh/${ClusterName}
 
-PublickKey: ${HOME}/.ssh/$clusterName.pub
-PrivateKey: ${HOME}/.ssh/$clusterName
+PublicKey:
+PrivateKey:
 
 ## Software Versions
 
@@ -33,7 +35,7 @@ Elasticsearch: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
 Filebeat: kindratte/filebeat:6.5.4
 Kibana: docker.elastic.co/kibana/kibana-oss:6.5.4
 Logstash: docker.elastic.co/logstash/logstash-oss:6.5.4
-Curator: kindratte/curator:5.6
+Curator: kindratte/curator:5.4
 
 ## ACME configuration
 
