@@ -11,12 +11,15 @@ RootUserName: untilltest
 # This user will be created on each node and given sudo permissions
 ClusterUserName: cluster
 
-# Key Locations
-# If empty keys will be created in ${HOME}/.ssh/${ClusterName}, if ${HOME} don't set create keys in ${executable folder}/
-# .ssh/${ClusterName}
+## Key Locations
 
-PublicKey:
-PrivateKey:
+# Default for PrivateKey is ${HOME}/.ssh/${ClusterName}.pub
+# Default for PublicKey is ${HOME}/.ssh/${ClusterName}
+# If os.getHomeDir() is empty path of swarm
+ 
+
+#PublicKey: 
+#PrivateKey:
 
 ## Software Versions
 
@@ -42,11 +45,12 @@ Curator: kindratte/curator:5.4
 # If enabled
 #   - ACME will be used through letsencrypt provider
 #   - traefik.yml is used to configure traefik, otherwise traefik-http.yml
+
 ACMEEnabled: false
 
 # If ACME is enabled the following paramaters are required
-Domain:
-Email:
+#Domain:
+#Email:
 
 ## Credentials
 
