@@ -12,16 +12,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 type clusterFile struct {
-	OrganizationName   string `yaml:"OrganizationName"`
-	ClusterName        string `yaml:"ClusterName"`
-	RootUserName       string `yaml:"RootUserName"`
-	ClusterUserName    string `yaml:"ClusterUserName"`
+	OrganizationName   string `yaml:"Organization"`
+	ClusterName        string `yaml:"Cluster"`
+	RootUserName       string `yaml:"RootUser"`
+	ClusterUserName    string `yaml:"ClusterUser"`
 	PublicKey          string `yaml:"PublicKey"`
 	PrivateKey         string `yaml:"PrivateKey"`
 	Docker             string `yaml:"Docker"`
@@ -53,7 +51,6 @@ type clusterFile struct {
 	KibanaCreds        string
 }
 
-var cfgFile string
 var logs bool
 
 var rootCmd = &cobra.Command{
@@ -71,27 +68,5 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().BoolVarP(&logs, "logs", "l", false, "Redirect logs to ./logs/log.log")
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".swarmgo")
-	}
-
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }
