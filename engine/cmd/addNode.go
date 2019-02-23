@@ -48,7 +48,9 @@ var addNodeCmd = &cobra.Command{
 		}
 		readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
 		clusterFile := unmarshalClusterYml()
+		debug("clusterFile", clusterFile)
 		rootUserName := clusterFile.RootUserName
+		debug("rootUserName", rootUserName)
 		if strings.Trim(rootUserName, " \n") == "" {
 			rootUserName = "root"
 		}
