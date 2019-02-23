@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
 	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func appendChildToExecutablePath(child string) string {
@@ -44,8 +44,14 @@ func checkFileExistence(clusterFile string) bool {
 	}
 }
 
-func logWithPrefix(host, str string) {
-	log.Println(host + " : " + str)
+func debug(prefix string, obj interface{}) {
+	if deb {
+		log.Println("### Debug: "+prefix+":", fmt.Sprint(obj))
+	}
+}
+
+func logWithPrefix(prefix, str string) {
+	log.Println(prefix + " : " + str)
 }
 
 func redirectLogs() *os.File {
@@ -220,7 +226,7 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 }
 
 func unmarshalClusterYml() *clusterFile {
-	clusterFileEntry := readFileIfExists(swarmgoConfigFileName, "Need to use swarmgo init first!")
+	clusterFileEntry := readFileIfExists(swarmgoConfigFileName, "You should create swarmgo-config.yml")
 	clusterFileStruct := clusterFile{}
 	err := yaml.Unmarshal(clusterFileEntry, &clusterFileStruct)
 	CheckErr(err)

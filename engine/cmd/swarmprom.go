@@ -10,13 +10,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/tmc/scp"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
+	"github.com/tmc/scp"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -113,8 +114,4 @@ func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	sudoExecSSHCommand(host, "chmod 777 "+relativePath, forCopy.config)
 	CheckErr(err)
 	log.Println(relativePath, "copied on host")
-}
-
-func init() {
-	rootCmd.AddCommand(swarmpromCmd)
 }

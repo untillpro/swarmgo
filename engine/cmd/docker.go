@@ -10,13 +10,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const docker = "docker-ce"
@@ -177,8 +178,4 @@ func checkDockerInstallation(host, version string, config *ssh.ClientConfig) boo
 	exit, _ := sudoExecSSHCommandWithoutPanic(host, "docker -v", config)
 	trimmedVersion := strings.Split(version, "~")[0]
 	return strings.Contains(exit, trimmedVersion)
-}
-
-func init() {
-	rootCmd.AddCommand(dockerCmd)
 }

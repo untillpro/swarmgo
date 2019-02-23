@@ -10,11 +10,12 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -109,8 +110,4 @@ func hashPassword(password string) string {
 		panic(err)
 	}
 	return string(hash)
-}
-
-func init() {
-	rootCmd.AddCommand(eLKCmd)
 }

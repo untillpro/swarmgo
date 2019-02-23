@@ -51,6 +51,7 @@ type clusterFile struct {
 	KibanaCreds        string
 }
 
+var deb bool
 var logs bool
 
 var rootCmd = &cobra.Command{
@@ -61,12 +62,22 @@ to work with him`,
 }
 
 func Execute() {
+
+	rootCmd.PersistentFlags().BoolVarP(&deb, "debug", "d", false, "Print debug information")
+	rootCmd.PersistentFlags().BoolVarP(&logs, "logs", "l", false, "Redirect logs to ./logs/log.log")
+
+	rootCmd.AddCommand(addNodeCmd)
+	rootCmd.AddCommand(dockerCmd)
+	rootCmd.AddCommand(eLKCmd)
+
+	rootCmd.AddCommand(swarmCmd)
+	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
+
+	rootCmd.AddCommand(swarmpromCmd)
+	rootCmd.AddCommand(traefikCmd)
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func init() {
-	rootCmd.PersistentFlags().BoolVarP(&logs, "logs", "l", false, "Redirect logs to ./logs/log.log")
 }

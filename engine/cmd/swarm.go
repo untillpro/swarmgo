@@ -10,13 +10,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -291,9 +292,4 @@ func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
 		}
 	}
 	return firstEntry, clusterFile
-}
-
-func init() {
-	rootCmd.AddCommand(swarmCmd)
-	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
 }

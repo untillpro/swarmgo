@@ -11,15 +11,16 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -188,8 +189,4 @@ func waitSuccessOrFailAfterTimer(host, success, logSuccess, logFail, cmd string,
 	}
 	close(doneChan)
 	timer.Stop()
-}
-
-func init() {
-	rootCmd.AddCommand(traefikCmd)
 }

@@ -10,13 +10,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const nodesFileName = "nodes.yml"
@@ -51,7 +52,14 @@ var addNodeCmd = &cobra.Command{
 		if strings.Trim(rootUserName, " \n") == "" {
 			rootUserName = "root"
 		}
+
+		debug("ClusterName", clusterFile.ClusterName)
+		debug("rootUserName", rootUserName)
+
 		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
+		debug("publicKeyFile", publicKeyFile)
+		debug("privateKeyFile", privateKeyFile)
+
 		fmt.Println("Enter password to crypt/decrypt you private key")
 		passToKey := waitUserInput()
 		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {
@@ -224,8 +232,4 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	}
 	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
 	return nil
-}
-
-func init() {
-	rootCmd.AddCommand(addNodeCmd)
 }
