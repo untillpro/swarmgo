@@ -59,12 +59,18 @@ var addNodeCmd = &cobra.Command{
 		debug("rootUserName", rootUserName)
 
 		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
-		debug("publicKeyFile", publicKeyFile)
-		debug("privateKeyFile", privateKeyFile)
 
-		fmt.Println("Enter password to crypt/decrypt you private key")
+		filesExist := FileExists(publicKeyFile) && FileExists(privateKeyFile)
+
+		if !filesExist {
+			fmt.Println("The following keys will be generated")
+		}
+		fmt.Println("Public Key:", publicKeyFile)
+		fmt.Println("Private Key:", privateKeyFile)
+
+		fmt.Print("Password to crypt/decrypt private key:")
 		passToKey := waitUserInput()
-		if !checkFileExistence(publicKeyFile) && !checkFileExistence(privateKeyFile) {
+		if !filesExist {
 			bitSize := 4096
 			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
 			CheckErr(err)
@@ -98,8 +104,8 @@ var addNodeCmd = &cobra.Command{
 			user.host = userAndAlias[1]
 			user.rootUserName = rootUserName
 			user.userName = clusterFile.ClusterUserName
-			fmt.Println("cluster user name for host is " + user.userName)
-			fmt.Println("input password for " + user.rootUserName + " user of " + user.host)
+			debug("Cluster user name", user.userName)
+			fmt.Print("Input password for " + user.rootUserName + "@" + user.host + ": ")
 			user.passToRoot = waitUserInput()
 			users[index] = user
 		}
@@ -145,8 +151,7 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	host := user.host
 	userName := user.userName
 	rootUserName := user.rootUserName
-	logWithPrefix(host, "Host "+host)
-	logWithPrefix(host, "Connecting to remote servers root with password..")
+	logWithPrefix(host, "Connecting to "+user.rootUserName+"@"+host)
 	sshConfig := &ssh.ClientConfig{
 		User:            rootUserName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),

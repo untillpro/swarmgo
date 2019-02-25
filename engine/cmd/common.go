@@ -32,7 +32,7 @@ func appendChildToExecutablePath(child string) string {
 	return filepath.Join(filepath.Dir(current), child)
 }
 
-func checkFileExistence(clusterFile string) bool {
+func FileExists(clusterFile string) bool {
 	_, err := os.Stat(clusterFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -81,17 +81,22 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
+	debug("execSSHCommandWithoutPanic:host", host)
+	debug("execSSHCommandWithoutPanic:cmd", cmd)
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	if err != nil {
+		debug("execSSHCommandWithoutPanic:Dial failed", "")
 		return "", err
 	}
 	session, err := conn.NewSession()
 	if err != nil {
+		debug("execSSHCommandWithoutPanic:Session creation failed", "")
 		return "", err
 	}
 	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
+		debug("execSSHCommandWithoutPanic:session.CombinedOutput failed", "")
 		return string(bs), err
 	}
 	return string(bs), nil
@@ -235,7 +240,7 @@ func unmarshalClusterYml() *clusterFile {
 
 func findSSHKeysAndInitConnection(passToKey string, config *clusterFile) *ssh.ClientConfig {
 	_, privateKeyFile := findSSHKeys(config)
-	if !checkFileExistence(privateKeyFile) {
+	if !FileExists(privateKeyFile) {
 		log.Fatal("Can't find private key to connect to remote server!")
 	}
 	return initSSHConnectionConfigWithPublicKeys(config.ClusterUserName, privateKeyFile, passToKey)

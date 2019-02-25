@@ -17,7 +17,7 @@ import (
 
 type clusterFile struct {
 	OrganizationName   string `yaml:"Organization"`
-	ClusterName        string `yaml:"ClusterN"`
+	ClusterName        string `yaml:"Cluster"`
 	RootUserName       string `yaml:"RootUser"`
 	ClusterUserName    string `yaml:"ClusterUser"`
 	PublicKey          string `yaml:"PublicKey"`
