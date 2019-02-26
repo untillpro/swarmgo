@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
@@ -46,8 +46,7 @@ var swarmpromCmd = &cobra.Command{
 				}
 			}()
 		}
-		fmt.Println("Enter password to crypt/decrypt you private key")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		if !firstEntry.node.Traefik {
 			log.Fatal("Need to deploy traefik before swarmprom deploy")
@@ -57,8 +56,7 @@ var swarmpromCmd = &cobra.Command{
 }
 
 func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
-	fmt.Println("Enter password for grafana admin user")
-	clusterFile.GrafanaPassword = waitUserInput()
+	clusterFile.GrafanaPassword = readPasswordPrompt("Grafana admin user password")
 	fmt.Println("Enter webhook URL for alertmanager")
 	clusterFile.WebhookURL = waitUserInput()
 	//TODO don't forget to implement passwords for prometheus and traefik

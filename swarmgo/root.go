@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
@@ -56,9 +56,7 @@ var logs bool
 
 var rootCmd = &cobra.Command{
 	Use:   "swarmgo",
-	Short: "SwarmGo is application to create docker cluster in swarm mode",
-	Long: `SwarmGo is application to create and configure docker cluster in swarm mode and install necessary tools
-to work with him`,
+	Short: "swarmgo creates docker cluster in swarm mode",
 }
 
 func Execute() {

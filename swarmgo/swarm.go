@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
@@ -67,8 +67,7 @@ var swarmCmd = &cobra.Command{
 				log.Fatal("Need to pass at least one alias to init swarm!")
 			}
 		}
-		fmt.Println("Enter password to crypt/decrypt you private key")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		nodesWithoutSwarm := make([]node, 0, len(nodesFromYml))
 		for _, nodeFromYml := range nodesFromYml {
 			if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||

@@ -44,3 +44,7 @@ Networks:
 - Logs are written to `./logs` folder
 
  
+# Misc
+
+- ssh cluster@address -i ~/.ssh/gmpw7
+- apt-cache madison docker-ce

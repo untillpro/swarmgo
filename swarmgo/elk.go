@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
@@ -37,8 +37,7 @@ var eLKCmd = &cobra.Command{
 				}
 			}()
 		}
-		fmt.Println("Enter password to crypt/decrypt you private key")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		fmt.Println("Enter Kibana login")
 		kibanaUser := waitUserInput()

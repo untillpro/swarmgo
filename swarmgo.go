@@ -8,8 +8,8 @@
 
 package main
 
-import "github.com/untillpro/swarmgo/engine/cmd"
+import "github.com/untillpro/swarmgo/swarmgo"
 
 func main() {
-	cmd.Execute()
+	swarmgo.Execute()
 }

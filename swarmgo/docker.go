@@ -6,13 +6,14 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -76,8 +77,7 @@ var dockerCmd = &cobra.Command{
 		if len(notInstalled) == 0 {
 			log.Fatal("Docker version " + dockerVersion + " already installed on all nodesFileName")
 		}
-		fmt.Println("Enter password to crypt/decrypt you private key")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range notInstalled {
 			go func(node node) {
@@ -176,6 +176,18 @@ func installDocker(node node, version string, config *ssh.ClientConfig) (node, e
 
 func checkDockerInstallation(host, version string, config *ssh.ClientConfig) bool {
 	exit, _ := sudoExecSSHCommandWithoutPanic(host, "docker -v", config)
-	trimmedVersion := strings.Split(version, "~")[0]
+
+	re := regexp.MustCompile("(?:.*:)?([^~]*)")
+	submatch := re.FindStringSubmatch(version)
+	var trimmedVersion string
+	if len(submatch) > 1 {
+		trimmedVersion = submatch[1]
+	} else {
+		trimmedVersion = ""
+	}
+	debug("docker -v", exit)
+	debug("version", version)
+	debug("trimmedVersion", trimmedVersion)
+
 	return strings.Contains(exit, trimmedVersion)
 }

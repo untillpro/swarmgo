@@ -6,11 +6,10 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -57,8 +56,7 @@ var traefikCmd = &cobra.Command{
 				}
 			}()
 		}
-		fmt.Println("Enter password to crypt/decrypt you private key")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getCurrentDir())
 		host := firstEntry.node.Host

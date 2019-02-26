@@ -6,18 +6,19 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {

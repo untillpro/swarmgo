@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"fmt"
@@ -68,8 +68,7 @@ var addNodeCmd = &cobra.Command{
 		fmt.Println("Public Key:", publicKeyFile)
 		fmt.Println("Private Key:", privateKeyFile)
 
-		fmt.Print("Password to crypt/decrypt private key:")
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		if !filesExist {
 			bitSize := 4096
 			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
@@ -105,8 +104,7 @@ var addNodeCmd = &cobra.Command{
 			user.rootUserName = rootUserName
 			user.userName = clusterFile.ClusterUserName
 			debug("Cluster user name", user.userName)
-			fmt.Print("Input password for " + user.rootUserName + "@" + user.host + ": ")
-			user.passToRoot = waitUserInput()
+			user.passToRoot = readPasswordPrompt("Password for " + user.rootUserName + "@" + user.host)
 			users[index] = user
 		}
 		nodesChannel := make(chan interface{})

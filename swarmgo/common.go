@@ -6,7 +6,7 @@
  *
  */
 
-package cmd
+package swarmgo
 
 import (
 	"bufio"
@@ -19,12 +19,26 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/terminal"
 	yaml "gopkg.in/yaml.v2"
 )
+
+func readPasswordPrompt(prompt string) string {
+	fmt.Print(prompt + ":")
+	password, err := terminal.ReadPassword(int(syscall.Stdin))
+	CheckErr(err)
+	fmt.Println("")
+	return string(password)
+}
+
+func readKeyPassword() string {
+	return readPasswordPrompt("Key password")
+}
 
 func appendChildToExecutablePath(child string) string {
 	current, err := os.Executable()
@@ -44,10 +58,13 @@ func FileExists(clusterFile string) bool {
 	}
 }
 
-func debug(prefix string, obj interface{}) {
+func debugObj(obj interface{}) {
 	if deb {
-		log.Println("### Debug: "+prefix+":", fmt.Sprint(obj))
+		log.Println(obj)
 	}
+}
+func debug(prefix string, obj interface{}) {
+	debugObj(fmt.Sprint("*** "+prefix+":", fmt.Sprint(obj)))
 }
 
 func logWithPrefix(prefix, str string) {
@@ -81,22 +98,21 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	debug("execSSHCommandWithoutPanic:host", host)
-	debug("execSSHCommandWithoutPanic:cmd", cmd)
+	debug("SSH", host+", "+cmd)
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	if err != nil {
-		debug("execSSHCommandWithoutPanic:Dial failed", "")
+		debug("SSH:Dial failed", "")
 		return "", err
 	}
 	session, err := conn.NewSession()
 	if err != nil {
-		debug("execSSHCommandWithoutPanic:Session creation failed", "")
+		debug("SSH:Session creation failed", "")
 		return "", err
 	}
 	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
-		debug("execSSHCommandWithoutPanic:session.CombinedOutput failed", "")
+		debug("SSH:session.CombinedOutput failed", "")
 		return string(bs), err
 	}
 	return string(bs), nil
