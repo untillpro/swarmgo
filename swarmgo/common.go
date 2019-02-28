@@ -28,6 +28,12 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+func assert(condition bool, info ...interface{}) {
+	if !condition {
+		log.Fatal(info...)
+	}
+}
+
 func readPasswordPrompt(prompt string) string {
 	fmt.Print(prompt + ":")
 	password, err := terminal.ReadPassword(int(syscall.Stdin))
@@ -58,13 +64,14 @@ func FileExists(clusterFile string) bool {
 	}
 }
 
-func debugObj(obj interface{}) {
-	if deb {
-		log.Println(obj)
-	}
+func header(obj interface{}) {
+	log.Print("*** ", obj)
 }
+
 func debug(prefix string, obj interface{}) {
-	debugObj(fmt.Sprint("*** "+prefix+":", fmt.Sprint(obj)))
+	if deb {
+		log.Print("--- "+prefix+":", obj)
+	}
 }
 
 func logWithPrefix(prefix, str string) {

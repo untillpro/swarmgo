@@ -9,7 +9,6 @@
 package swarmgo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -31,118 +30,144 @@ type node struct {
 	Traefik                    bool
 }
 
+func add(cmd *cobra.Command, args []string) {
+	if logs {
+		f := redirectLogs()
+		defer func() {
+			f.Close()
+		}()
+	}
+
+	// *************************************************
+	header("Reading config....")
+
+	readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
+	clusterFile := unmarshalClusterYml()
+	rootUserName := clusterFile.RootUserName
+	if strings.Trim(rootUserName, " \n") == "" {
+		rootUserName = "root"
+	}
+
+	debug("clusterFile", clusterFile)
+	debug("ClusterName", clusterFile.ClusterName)
+	debug("RootUserName", rootUserName)
+
+	nodesFromYaml := getNodesFromYml(getCurrentDir())
+
+	// *************************************************
+	header("Getting existing nodeNames and nodeIPs....")
+
+	nodeNames := make(map[string]string)
+	nodeIPs := make(map[string]string)
+	for _, node := range nodesFromYaml {
+		nodeNames[node.Alias] = node.Host
+		nodeIPs[node.Host] = node.Alias
+	}
+
+	// *************************************************
+	header("Calculating which nodes to add...")
+
+	nodesToAdd := make(map[string]string)
+
+	for _, arg := range args {
+		userAndAlias := strings.Split(arg, "=")
+		assert(len(userAndAlias) == 2, "Wrong argument:`", arg, " ` must be <node name>=<node IP>")
+		userAndAlias[0] = strings.TrimSpace(userAndAlias[0])
+		userAndAlias[1] = strings.TrimSpace(userAndAlias[1])
+
+		assert(len(userAndAlias[0]) > 0, "Wrong argument: ", arg)
+		assert(len(userAndAlias[1]) > 0, "Wrong argument: ", arg)
+
+		nodeName := userAndAlias[0]
+		nodeIP := userAndAlias[1]
+
+		if value, ex := nodeNames[nodeName]; ex {
+			log.Println("Name already configured:", nodeName, value)
+			continue
+		}
+
+		if value, ex := nodeIPs[nodeIP]; ex {
+			log.Println("IP already configured:", nodeIP, value)
+			continue
+		}
+		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
+	}
+
+	debug("nodesToAdd", nodesToAdd)
+	assert(len(nodesToAdd) > 0, "Nothing to add")
+
+	// *************************************************
+	header("Checking keys...")
+
+	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
+	log.Println("Public Key location:", publicKeyFile)
+	log.Println("Private Key location:", privateKeyFile)
+
+	filesExist := FileExists(publicKeyFile) && FileExists(privateKeyFile)
+
+	passToKey := readKeyPassword()
+	if !filesExist {
+		header("Generating keys...")
+		bitSize := 4096
+		err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
+		CheckErr(err)
+	}
+
+	var users []user
+	for name, IP := range nodesToAdd {
+		var user user
+		user.alias = name
+		user.host = IP
+		user.rootUserName = rootUserName
+		user.userName = clusterFile.ClusterUserName
+		user.passToRoot = readPasswordPrompt("Password for " + user.rootUserName + "@" + user.host)
+		users = append(users, user)
+	}
+
+	nodesChannel := make(chan interface{})
+	for _, value := range users {
+		go func(user user) {
+			//passToRoot to user and key from input
+			err := configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
+			if err != nil {
+				nodesChannel <- err
+			} else {
+				nodeFromFunc := node{
+					Host:  user.host,
+					Alias: user.alias,
+				}
+				nodesChannel <- nodeFromFunc
+			}
+		}(value)
+	}
+	errMsgs := make([]string, 0, len(args))
+	for range args {
+		nodeFromChannel := <-nodesChannel
+		switch nodeFromChannel.(type) {
+		case node:
+			nodesFromYaml = append(nodesFromYaml, nodeFromChannel.(node))
+		case error:
+			errMsgs = append(errMsgs, nodeFromChannel.(error).Error())
+		}
+	}
+	for _, errMsg := range errMsgs {
+		log.Println(errMsg)
+	}
+	close(nodesChannel)
+	marshaledNode, err := yaml.Marshal(&nodesFromYaml)
+	CheckErr(err)
+	nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
+	err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
+	CheckErr(err)
+}
+
 // addNodeCmd represents the addNode command
 var addNodeCmd = &cobra.Command{
 	Use:   "add",
-	Short: "add <Alias1>=<1IP> <Alias2>=<IP2>",
-	Long:  `Add node with specified alias and current IP to cluster and config access with keys`,
+	Short: "Configure SSH access to nodes and add nodes to nodes.yml",
+	Long:  `Use add <node name1>=<IP1> <node name2>=<IP2> ...`,
 	Args:  cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					log.Println("Error closing the file: ", err.Error())
-				}
-			}()
-		}
-		readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
-		clusterFile := unmarshalClusterYml()
-		debug("clusterFile", clusterFile)
-		rootUserName := clusterFile.RootUserName
-		debug("rootUserName", rootUserName)
-		if strings.Trim(rootUserName, " \n") == "" {
-			rootUserName = "root"
-		}
-
-		debug("ClusterName", clusterFile.ClusterName)
-		debug("rootUserName", rootUserName)
-
-		publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
-
-		filesExist := FileExists(publicKeyFile) && FileExists(privateKeyFile)
-
-		if !filesExist {
-			fmt.Println("The following keys will be generated")
-		}
-		fmt.Println("Public Key:", publicKeyFile)
-		fmt.Println("Private Key:", privateKeyFile)
-
-		passToKey := readKeyPassword()
-		if !filesExist {
-			bitSize := 4096
-			err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
-			CheckErr(err)
-		} else {
-			log.Println("Keys already exist")
-		}
-		log.Println("Checking if node already configured to use keys")
-		nodesFromYaml := getNodesFromYml(getCurrentDir())
-		hosts := make([]string, len(nodesFromYaml))
-		for index, node := range nodesFromYaml {
-			hosts[index] = node.Alias + "=" + node.Host
-		}
-		i := 0
-		for _, arg := range args {
-			if contains(hosts, arg) {
-				log.Println(arg + " node already configured to use keys!")
-			} else {
-				args[i] = arg
-				i++
-			}
-		}
-		args = args[:i]
-		if len(args) == 0 {
-			log.Fatal("All passed hosts already configured to use keys")
-		}
-		users := make([]user, len(args))
-		for index, arg := range args {
-			var user user
-			userAndAlias := strings.Split(arg, "=")
-			user.alias = userAndAlias[0]
-			user.host = userAndAlias[1]
-			user.rootUserName = rootUserName
-			user.userName = clusterFile.ClusterUserName
-			debug("Cluster user name", user.userName)
-			user.passToRoot = readPasswordPrompt("Password for " + user.rootUserName + "@" + user.host)
-			users[index] = user
-		}
-		nodesChannel := make(chan interface{})
-		for _, value := range users {
-			go func(user user) {
-				//passToRoot to user and key from input
-				err := configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
-				if err != nil {
-					nodesChannel <- err
-				} else {
-					nodeFromFunc := node{
-						Host:  user.host,
-						Alias: user.alias,
-					}
-					nodesChannel <- nodeFromFunc
-				}
-			}(value)
-		}
-		errMsgs := make([]string, 0, len(args))
-		for range args {
-			nodeFromChannel := <-nodesChannel
-			switch nodeFromChannel.(type) {
-			case node:
-				nodesFromYaml = append(nodesFromYaml, nodeFromChannel.(node))
-			case error:
-				errMsgs = append(errMsgs, nodeFromChannel.(error).Error())
-			}
-		}
-		for _, errMsg := range errMsgs {
-			log.Println(errMsg)
-		}
-		close(nodesChannel)
-		marshaledNode, err := yaml.Marshal(&nodesFromYaml)
-		CheckErr(err)
-		nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
-		err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
-		CheckErr(err)
-	},
+	Run:   add,
 }
 
 func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) error {
