@@ -65,7 +65,7 @@ func FileExists(clusterFile string) bool {
 }
 
 func header(obj interface{}) {
-	log.Print("*** ", obj)
+	log.Print(obj)
 }
 
 func debug(prefix string, obj interface{}) {
