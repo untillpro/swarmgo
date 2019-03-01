@@ -64,13 +64,17 @@ func FileExists(clusterFile string) bool {
 	}
 }
 
-func header(obj interface{}) {
-	log.Print(obj)
+func doing(obj interface{}) {
+	log.Print(obj, "...")
 }
 
-func debug(prefix string, obj interface{}) {
+func debug(prefix string, args ...interface{}) {
 	if deb {
-		log.Print("--- "+prefix+":", obj)
+		res := "--- " + prefix + ":"
+		for _, arg := range args {
+			res += fmt.Sprintf("%#v, ", arg)
+		}
+		log.Print(res)
 	}
 }
 

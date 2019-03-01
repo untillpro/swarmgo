@@ -39,7 +39,7 @@ func add(cmd *cobra.Command, args []string) {
 	}
 
 	// *************************************************
-	header("Reading config....")
+	doing("Reading config")
 
 	readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
 	clusterFile := unmarshalClusterYml()
@@ -55,7 +55,7 @@ func add(cmd *cobra.Command, args []string) {
 	nodesFromYaml := getNodesFromYml(getCurrentDir())
 
 	// *************************************************
-	header("Getting existing nodeNames and nodeIPs....")
+	doing("Getting existing nodeNames and nodeIPs")
 
 	nodeNames := make(map[string]string)
 	nodeIPs := make(map[string]string)
@@ -65,7 +65,7 @@ func add(cmd *cobra.Command, args []string) {
 	}
 
 	// *************************************************
-	header("Calculating which nodes to add...")
+	doing("Calculating which nodes to add")
 
 	nodesToAdd := make(map[string]string)
 
@@ -97,7 +97,7 @@ func add(cmd *cobra.Command, args []string) {
 	assert(len(nodesToAdd) > 0, "Nothing to add")
 
 	// *************************************************
-	header("Checking keys...")
+	doing("Checking keys")
 
 	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
 	log.Println("Public Key location:", publicKeyFile)
@@ -107,7 +107,7 @@ func add(cmd *cobra.Command, args []string) {
 
 	passToKey := readKeyPassword()
 	if !filesExist {
-		header("Generating keys...")
+		doing("Generating keys")
 		bitSize := 4096
 		err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
 		CheckErr(err)
