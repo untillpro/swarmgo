@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -31,15 +32,11 @@ type node struct {
 }
 
 func add(cmd *cobra.Command, args []string) {
-	if logs {
-		f := redirectLogs()
-		defer func() {
-			f.Close()
-		}()
-	}
+	initCommand("add")
+	defer finitCommand()
 
 	// *************************************************
-	doing("Reading config")
+	gc.Doing("Reading config")
 
 	readFileIfExists(swarmgoConfigFileName, "Need to create swarmgo-config.yml first!")
 	clusterFile := unmarshalClusterYml()
@@ -48,14 +45,14 @@ func add(cmd *cobra.Command, args []string) {
 		rootUserName = "root"
 	}
 
-	debug("clusterFile", clusterFile)
-	debug("ClusterName", clusterFile.ClusterName)
-	debug("RootUserName", rootUserName)
+	gc.Verbose("clusterFile", clusterFile)
+	gc.Verbose("ClusterName", clusterFile.ClusterName)
+	gc.Verbose("RootUserName", rootUserName)
 
 	nodesFromYaml := getNodesFromYml(getCurrentDir())
 
 	// *************************************************
-	doing("Getting existing nodeNames and nodeIPs")
+	gc.Doing("Getting existing nodeNames and nodeIPs")
 
 	nodeNames := make(map[string]string)
 	nodeIPs := make(map[string]string)
@@ -65,18 +62,18 @@ func add(cmd *cobra.Command, args []string) {
 	}
 
 	// *************************************************
-	doing("Calculating which nodes to add")
+	gc.Doing("Calculating which nodes to add")
 
 	nodesToAdd := make(map[string]string)
 
 	for _, arg := range args {
 		userAndAlias := strings.Split(arg, "=")
-		assert(len(userAndAlias) == 2, "Wrong argument:`", arg, " ` must be <node name>=<node IP>")
+		gc.ExitIfFalse(len(userAndAlias) == 2, "Wrong argument:`", arg, " ` must be <node name>=<node IP>")
 		userAndAlias[0] = strings.TrimSpace(userAndAlias[0])
 		userAndAlias[1] = strings.TrimSpace(userAndAlias[1])
 
-		assert(len(userAndAlias[0]) > 0, "Wrong argument: ", arg)
-		assert(len(userAndAlias[1]) > 0, "Wrong argument: ", arg)
+		gc.ExitIfFalse(len(userAndAlias[0]) > 0, "Wrong argument: ", arg)
+		gc.ExitIfFalse(len(userAndAlias[1]) > 0, "Wrong argument: ", arg)
 
 		nodeName := userAndAlias[0]
 		nodeIP := userAndAlias[1]
@@ -93,11 +90,11 @@ func add(cmd *cobra.Command, args []string) {
 		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
 	}
 
-	debug("nodesToAdd", nodesToAdd)
-	assert(len(nodesToAdd) > 0, "Nothing to add")
+	gc.Verbose("nodesToAdd", nodesToAdd)
+	gc.ExitIfFalse(len(nodesToAdd) > 0, "Nothing to add")
 
 	// *************************************************
-	doing("Checking keys")
+	gc.Doing("Checking keys")
 
 	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
 	log.Println("Public Key location:", publicKeyFile)
@@ -107,10 +104,10 @@ func add(cmd *cobra.Command, args []string) {
 
 	passToKey := readKeyPassword()
 	if !filesExist {
-		doing("Generating keys")
+		gc.Doing("Generating keys")
 		bitSize := 4096
 		err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
-		CheckErr(err)
+		gc.ExitIfError(err)
 	}
 
 	var users []user
@@ -155,10 +152,10 @@ func add(cmd *cobra.Command, args []string) {
 	}
 	close(nodesChannel)
 	marshaledNode, err := yaml.Marshal(&nodesFromYaml)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
 	err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
-	CheckErr(err)
+	gc.ExitIfError(err)
 }
 
 // addNodeCmd represents the addNode command
@@ -174,18 +171,23 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	host := user.host
 	userName := user.userName
 	rootUserName := user.rootUserName
-	logWithPrefix(host, "Connecting to "+user.rootUserName+"@"+host)
+
+	// *************************************************
 	sshConfig := &ssh.ClientConfig{
 		User:            rootUserName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
 	}
+
+	doingWithPrefix(host, "Adding new user "+userName)
 	_, err := sudoExecSSHCommandWithoutPanic(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
 	if err != nil {
 		return err
 	}
+
+	// *************************************************
+	doingWithPrefix(host, "Giving sudo permissions to "+userName)
 	pass := generateRandomString(32)
-	logWithPrefix(host, "New user "+userName+" added")
 	_, err = sudoExecSSHCommandWithoutPanic(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
 	if err != nil {
 		return err
@@ -198,18 +200,23 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, "Sudo permissions given to "+userName)
+
+	// *************************************************
+	doingWithPrefix(host, "Disabling the password for "+user.rootUserName)
+
 	sshConfig = &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Auth:            []ssh.AuthMethod{ssh.Password(pass)},
 	}
-	logWithPrefix(host, "Relogin from root to "+userName)
+
 	_, err = sudoExecSSHCommandWithoutPanic(host, "passwd -l "+user.rootUserName, sshConfig)
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, "Root password disabled")
+
+	// *************************************************
+	doingWithPrefix(host, "Adding public key to host")
 	_, err = execSSHCommandWithoutPanic(host, "mkdir -p ~/.ssh", sshConfig)
 	if err != nil {
 		return err
@@ -235,18 +242,21 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, "Host public key added to remote server")
+
+	// *************************************************
+	doingWithPrefix(host, "Disabling password auth")
 	_, err = sudoExecSSHCommandWithoutPanic(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
 		sshConfig)
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, host+" password auth disabled")
+
+	// *************************************************
+	doingWithPrefix(host, "Allowing ssh")
 	_, err = sudoExecSSHCommandWithoutPanic(host, "sudo service ssh restart", sshConfig)
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, "SSH reloaded")
 	sshConfig = initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
 	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow OpenSSH", sshConfig)
 	if err != nil {
@@ -260,6 +270,6 @@ func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey str
 	if err != nil {
 		return err
 	}
-	logWithPrefix(host, "Firewall reloaded to work with OpenSSH")
+	logWithPrefix(host, "Done")
 	return nil
 }

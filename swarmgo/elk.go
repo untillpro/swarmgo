@@ -69,14 +69,14 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 		appliedBuffer.String()+"\nEOF", config)
 	log.Println(eLKComposeFileName, "applied by template")
 	log.Println("Increasing vm.max_map_count")
-	increaseVmMaxMapCount(passToKey, clusterFile)
+	increaseVMMaxMapCount(passToKey, clusterFile)
 	log.Println("Increased")
 	log.Println("Trying to deploy ELK")
 	sudoExecSSHCommand(host, "docker stack deploy -c "+eLKComposeFileName+" elk", config)
 	log.Println("ELK deployed")
 }
 
-func increaseVmMaxMapCount(passToKey string, clusterFile *clusterFile) {
+func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
 	nodesFromYml := getNodesFromYml(getCurrentDir())
 	doneChannel := make(chan interface{})
 	for _, value := range nodesFromYml {

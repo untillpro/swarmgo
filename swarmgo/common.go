@@ -23,16 +23,11 @@ import (
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
+	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	yaml "gopkg.in/yaml.v2"
 )
-
-func assert(condition bool, info ...interface{}) {
-	if !condition {
-		log.Fatal(info...)
-	}
-}
 
 func readPasswordPrompt(prompt string) string {
 	fmt.Print(prompt + ":")
@@ -52,6 +47,7 @@ func appendChildToExecutablePath(child string) string {
 	return filepath.Join(filepath.Dir(current), child)
 }
 
+// FileExists s.e.
 func FileExists(clusterFile string) bool {
 	_, err := os.Stat(clusterFile)
 	if err != nil {
@@ -64,22 +60,12 @@ func FileExists(clusterFile string) bool {
 	}
 }
 
-func doing(obj interface{}) {
-	log.Print(obj, "...")
-}
-
-func debug(prefix string, args ...interface{}) {
-	if deb {
-		res := "--- " + prefix + ":"
-		for _, arg := range args {
-			res += fmt.Sprintf("%#v, ", arg)
-		}
-		log.Print(res)
-	}
-}
-
 func logWithPrefix(prefix, str string) {
-	log.Println(prefix + " : " + str)
+	gc.Info(prefix + ": " + str)
+}
+
+func doingWithPrefix(prefix, str string) {
+	gc.Doing(prefix + ": " + str)
 }
 
 func redirectLogs() *os.File {
@@ -109,21 +95,21 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	debug("SSH", host+", "+cmd)
+	gc.Verbose("SSH", host+", "+cmd)
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	if err != nil {
-		debug("SSH:Dial failed", "")
+		gc.Verbose("SSH:Dial failed", "")
 		return "", err
 	}
 	session, err := conn.NewSession()
 	if err != nil {
-		debug("SSH:Session creation failed", "")
+		gc.Verbose("SSH:Session creation failed", "")
 		return "", err
 	}
 	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
-		debug("SSH:session.CombinedOutput failed", "")
+		gc.Verbose("SSH:session.CombinedOutput failed", "")
 		return string(bs), err
 	}
 	return string(bs), nil
@@ -172,7 +158,7 @@ func readFileIfExists(fileName, errorMessage string) []byte {
 	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), fileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Fatal(errorMessage)
+			gc.ExitIfError(err, errorMessage)
 		}
 	}
 	return nodesFileEntry

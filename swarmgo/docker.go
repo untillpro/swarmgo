@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -167,11 +168,10 @@ func installDocker(node node, version string, config *ssh.ClientConfig) (node, e
 		logWithPrefix(host, "Docker successfully installed")
 		node.DockerVersion = version
 		return node, nil
-	} else {
-		logWithPrefix(host, "Can't install docker")
-		node.DockerVersion = ""
-		return node, nil
 	}
+	logWithPrefix(host, "Can't install docker")
+	node.DockerVersion = ""
+	return node, nil
 }
 
 func checkDockerInstallation(host, version string, config *ssh.ClientConfig) bool {
@@ -185,9 +185,9 @@ func checkDockerInstallation(host, version string, config *ssh.ClientConfig) boo
 	} else {
 		trimmedVersion = ""
 	}
-	debug("docker -v", exit)
-	debug("version", version)
-	debug("trimmedVersion", trimmedVersion)
+	gc.Verbose("docker -v", exit)
+	gc.Verbose("version", version)
+	gc.Verbose("trimmedVersion", trimmedVersion)
 
 	return strings.Contains(exit, trimmedVersion)
 }

@@ -47,11 +47,10 @@ type clusterFile struct {
 	Kibana             string `yaml:"Kibana"`
 	Logstash           string `yaml:"Logstash"`
 	Curator            string `yaml:"Curator"`
-	CurrentNodeId      string
 	KibanaCreds        string
 }
 
-var deb bool
+var verbose bool
 var logs bool
 
 var rootCmd = &cobra.Command{
@@ -59,9 +58,10 @@ var rootCmd = &cobra.Command{
 	Short: "swarmgo creates docker cluster in swarm mode",
 }
 
+// Execute rootCmd
 func Execute() {
 
-	rootCmd.PersistentFlags().BoolVarP(&deb, "debug", "d", false, "Print debug information")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&logs, "logs", "l", false, "Redirect logs to ./logs/log.log")
 
 	rootCmd.AddCommand(addNodeCmd)

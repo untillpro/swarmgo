@@ -154,7 +154,6 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, co
 func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
 	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
 	out = strings.Trim(out, "\n ")
-	clusterFile.CurrentNodeId = out
 	deployTraefik(clusterFile, host, traefikComposeFileName, config)
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
