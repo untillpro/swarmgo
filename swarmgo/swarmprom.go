@@ -45,9 +45,10 @@ var swarmpromCmd = &cobra.Command{
 					log.Println("Error closing the file: ", err.Error())
 				}
 			}()
-			initCommand("swarmprom")
-			defer finitCommand()
 		}
+		initCommand("swarmprom")
+		defer finitCommand()
+
 		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		if !firstEntry.node.Traefik {
