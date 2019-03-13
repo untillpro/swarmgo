@@ -26,6 +26,8 @@ Steps:
 - Run `swarmgo swarm`
   - Install swarm in `worker` mode for all nodes which do not have swarm configured yet
   - At least one manager must be configured first
+- Run `swarmgo swarmprom`
+  - https://domen/grafana
 
 
 Services:
