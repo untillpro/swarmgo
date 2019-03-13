@@ -61,7 +61,7 @@ var traefikCmd = &cobra.Command{
 		nodes := getNodesFromYml(getCurrentDir())
 		host := firstEntry.node.Host
 		var config = findSSHKeysAndInitConnection(passToKey, clusterFile)
-		sudoExecSSHCommand(host, "docker network create -d overlay traefik || true", config)
+		sudoExecSSHCommand(host, "docker network create -d overlay --opt encrypted traefik || true", config)
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
 			traefikComposeName = traefikComposeFileName
@@ -145,7 +145,7 @@ func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *byt
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
 	tmplBuffer := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	log.Println("traefik.yml modified")
-	sudoExecSSHCommand(host, "docker network create -d overlay webgateway || true", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay --opt encrypted webgateway || true", config)
 	log.Println("webgateway networks created")
 	execSSHCommand(host, "cat > ~/"+traefikFolderName+"traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikFolderName+"traefik.yml traefik", config)
@@ -154,6 +154,7 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, co
 func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
 	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
 	out = strings.Trim(out, "\n ")
+	clusterFile.CurrentNodeId = out
 	deployTraefik(clusterFile, host, traefikComposeFileName, config)
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",

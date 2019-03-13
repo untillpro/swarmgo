@@ -19,6 +19,7 @@ services:
       - "--acme.onDemand=false"
       - "--acme.email={{.Email}}"
       - "--acme.domains={{.Domain}}"
+      - "--acme.keytype=EC256"
       - "--docker"
       - "--docker.exposedbydefault=false"
       - "--docker.swarmMode"
@@ -27,6 +28,7 @@ services:
       - "--consul"
       - "--consul.endpoint=consul.server:8500"
       - "--consul.prefix=traefik"
+      - "--maxidleconnsperhost=0"
     networks:
       - traefik
     deploy:

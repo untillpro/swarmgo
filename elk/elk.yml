@@ -89,7 +89,7 @@ services:
     networks:
       - webgateway
 
-  curator:
+  curator-filebeat:
     image: {{.Curator}}
     environment:
       - CRON=0 * * * *

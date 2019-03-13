@@ -47,6 +47,7 @@ type clusterFile struct {
 	Kibana             string `yaml:"Kibana"`
 	Logstash           string `yaml:"Logstash"`
 	Curator            string `yaml:"Curator"`
+	CurrentNodeId      string
 	KibanaCreds        string
 }
 
