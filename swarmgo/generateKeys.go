@@ -13,8 +13,9 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
+	gc "github.com/untillpro/gochips"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -34,7 +35,7 @@ func generatePrivateKey(bitSize int) (*rsa.PrivateKey, error) {
 		return nil, err
 	}
 
-	log.Println("Private Key generated")
+	gc.Info("Private Key generated")
 	return privateKey, nil
 }
 
@@ -59,7 +60,7 @@ func generatePublicKey(privateKey *rsa.PublicKey) []byte {
 
 	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
 
-	log.Println("Public key generated")
+	gc.Info("Public key generated")
 	return pubKeyBytes
 }
 
@@ -74,7 +75,7 @@ func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Key saved to: %s", saveFileTo)
+	gc.Info(fmt.Sprintf("Key saved to: %s", saveFileTo))
 	return nil
 }
 
@@ -82,7 +83,7 @@ func writeKeyToFile(keyBytes []byte, saveFileTo string) error {
 func generateKeysAndWriteToFile(bitSize int, privateKeyFile, publicKeyFile, password string) error {
 	privateKey, err := generatePrivateKey(bitSize)
 	if err != nil {
-		log.Fatal(err.Error())
+		gc.Fatal(err.Error())
 		return err
 	}
 
@@ -92,13 +93,13 @@ func generateKeysAndWriteToFile(bitSize int, privateKeyFile, publicKeyFile, pass
 
 	err = writeKeyToFile(privateKeyBytes, privateKeyFile)
 	if err != nil {
-		log.Fatal(err.Error())
+		gc.Fatal(err.Error())
 		return err
 	}
 
 	err = writeKeyToFile([]byte(publicKeyBytes), publicKeyFile)
 	if err != nil {
-		log.Fatal(err.Error())
+		gc.Fatal(err.Error())
 		return err
 	}
 

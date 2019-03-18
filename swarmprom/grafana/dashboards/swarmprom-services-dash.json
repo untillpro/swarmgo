@@ -598,7 +598,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "CPU usage by Service",
+      "title": "CPU Usage by Service",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -772,7 +772,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "CPU usage by Container (top 10)",
+      "title": "CPU Usage by Container (top 10)",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -865,7 +865,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Memory usage by Service",
+      "title": "Memory Usage by Service",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1034,7 +1034,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Memory usage by Container (top 10)",
+      "title": "Memory Usage by Container (top 10)",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1119,7 +1119,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Network received by Service",
+      "title": "Network Received by Service",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1205,7 +1205,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Network transmitted by Service",
+      "title": "Network Transmitted by Service",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1479,7 +1479,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum((node_filesystem_free_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"} * 100) / count(node_meta * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"})",
+          "expr": "sum(node_filesystem_free_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) / sum(node_filesystem_size_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) * 100",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "",
@@ -1499,245 +1499,6 @@
         }
       ],
       "valueName": "avg"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": null,
-      "decimals": 0,
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 60
-      },
-      "id": 29,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sort": "current",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(engine_daemon_container_actions_seconds_count * on(instance) group_left(node_id) swarm_node_info{node_id=~\"$node_id\"})  by (action)",
-          "format": "time_series",
-          "intervalFactor": 10,
-          "legendFormat": "{{action }}",
-          "refId": "A",
-          "step": 10
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Docker Daemon Container Actions",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": null,
-      "decimals": 0,
-      "fill": 1,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 60
-      },
-      "id": 30,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "hideEmpty": true,
-        "hideZero": true,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sort": "current",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(engine_daemon_network_actions_seconds_count * on(instance) group_left(node_id) swarm_node_info{node_id=~\"$node_id\"})  by (action)",
-          "format": "time_series",
-          "intervalFactor": 10,
-          "legendFormat": "{{action }}",
-          "refId": "A",
-          "step": 10
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Docker Daemon Network Actions",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ]
-    },
-    {
-      "columns": [
-        {
-          "text": "Avg",
-          "value": "avg"
-        }
-      ],
-      "datasource": null,
-      "fontSize": "100%",
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 67
-      },
-      "hideTimeOverride": true,
-      "id": 28,
-      "links": [],
-      "pageSize": null,
-      "repeat": null,
-      "scroll": true,
-      "showHeader": true,
-      "sort": {
-        "col": 0,
-        "desc": true
-      },
-      "styles": [
-        {
-          "alias": "Time",
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "pattern": "Time",
-          "type": "date"
-        },
-        {
-          "alias": "",
-          "colorMode": null,
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "decimals": 2,
-          "pattern": "/.*/",
-          "thresholds": [],
-          "type": "number",
-          "unit": "short"
-        }
-      ],
-      "targets": [
-        {
-          "expr": "sum(engine_daemon_engine_info * on(instance) group_left(node_id) swarm_node_info) by (kernel, os, graphdriver, version, node_id)",
-          "format": "table",
-          "intervalFactor": 2,
-          "legendFormat": "",
-          "refId": "A",
-          "step": 2
-        }
-      ],
-      "timeFrom": "1s",
-      "title": "Docker Engine Info",
-      "transform": "timeseries_to_rows",
-      "type": "table"
     }
   ],
   "refresh": "30s",

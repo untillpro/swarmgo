@@ -10,14 +10,13 @@ package swarmgo
 
 import (
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const nodesFileName = "nodes.yml"
@@ -79,12 +78,12 @@ func add(cmd *cobra.Command, args []string) {
 		nodeIP := userAndAlias[1]
 
 		if value, ex := nodeNames[nodeName]; ex {
-			log.Println("Name already configured:", nodeName, value)
+			gc.Info("Name already configured:", nodeName, value)
 			continue
 		}
 
 		if value, ex := nodeIPs[nodeIP]; ex {
-			log.Println("IP already configured:", nodeIP, value)
+			gc.Info("IP already configured:", nodeIP, value)
 			continue
 		}
 		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
@@ -97,8 +96,8 @@ func add(cmd *cobra.Command, args []string) {
 	gc.Doing("Checking keys")
 
 	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
-	log.Println("Public Key location:", publicKeyFile)
-	log.Println("Private Key location:", privateKeyFile)
+	gc.Info("Public Key location:", publicKeyFile)
+	gc.Info("Private Key location:", privateKeyFile)
 
 	filesExist := FileExists(publicKeyFile) && FileExists(privateKeyFile)
 
@@ -148,7 +147,7 @@ func add(cmd *cobra.Command, args []string) {
 		}
 	}
 	for _, errMsg := range errMsgs {
-		log.Println(errMsg)
+		gc.Info(errMsg)
 	}
 	close(nodesChannel)
 	marshaledNode, err := yaml.Marshal(&nodesFromYaml)

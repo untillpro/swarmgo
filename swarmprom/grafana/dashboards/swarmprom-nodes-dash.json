@@ -882,6 +882,89 @@
         "x": 0,
         "y": 15
       },
+      "id": 88,
+      "legend": {
+        "alignAsTable": true,
+        "avg": true,
+        "current": false,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum((node_filesystem_free_bytes{fstype=~\"xfs|ext4\"} * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) * on(instance) group_left(node_name) node_meta{node_id=~\"$node_id\"}) by (node_name)",
+          "format": "time_series",
+          "intervalFactor": 2,
+          "legendFormat": "Free space on {{node_name}}",
+          "refId": "A",
+          "step": 2
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Free Space on Node",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "decbytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ]
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
       "id": 15,
       "legend": {
         "alignAsTable": true,
@@ -927,7 +1010,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Memory usage by Node",
+      "title": "Memory Usage by Node",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -972,7 +1055,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 29
       },
       "id": 16,
       "legend": {
@@ -1064,7 +1147,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 29
+        "y": 36
       },
       "id": 18,
       "legend": {
@@ -1156,7 +1239,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 29
+        "y": 36
       },
       "id": 19,
       "legend": {
@@ -1242,7 +1325,7 @@
         "h": 7,
         "w": 18,
         "x": 0,
-        "y": 36
+        "y": 43
       },
       "id": 12,
       "legend": {
@@ -1285,7 +1368,7 @@
       "thresholds": [],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Running Containers by Service",
+      "title": "Running Containers by Node",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1340,7 +1423,7 @@
         "h": 7,
         "w": 6,
         "x": 18,
-        "y": 36
+        "y": 43
       },
       "id": 7,
       "interval": null,
@@ -1410,7 +1493,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 50
       },
       "id": 17,
       "legend": {
@@ -1500,7 +1583,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 50
+        "y": 57
       },
       "hideTimeOverride": true,
       "id": 20,
@@ -1536,7 +1619,7 @@
       ],
       "targets": [
         {
-          "expr": "sum(node_meta) by (node_id, node_name, instance)",
+          "expr": "sum(node_meta) by (node_id, node_name)",
           "format": "table",
           "intervalFactor": 2,
           "refId": "A",
@@ -1544,7 +1627,7 @@
         }
       ],
       "timeFrom": "1s",
-      "title": "Cluster members",
+      "title": "Cluster Members",
       "transform": "timeseries_to_rows",
       "type": "table"
     }

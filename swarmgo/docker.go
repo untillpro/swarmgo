@@ -11,7 +11,6 @@ package swarmgo
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -19,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const docker = "docker-ce"
@@ -39,7 +38,7 @@ var dockerCmd = &cobra.Command{
 			f := redirectLogs()
 			defer func() {
 				if err := f.Close(); err != nil {
-					log.Println("Error closing the file: ", err.Error())
+					gc.Info("Error closing the file: ", err.Error())
 				}
 			}()
 		}
@@ -47,7 +46,7 @@ var dockerCmd = &cobra.Command{
 		dockerVersion := clusterFile.Docker
 		nodesFromYaml := getNodesFromYml(getCurrentDir())
 		if len(nodesFromYaml) == 0 {
-			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
 		alreadyInstalled := make([]node, 0, len(nodesFromYaml))
 		notInstalled := make([]node, 0, len(nodesFromYaml))
@@ -60,7 +59,7 @@ var dockerCmd = &cobra.Command{
 			for _, arg := range args {
 				val, ok := aliasesAndNodes[arg]
 				if !ok {
-					log.Fatal(val, "doesn't present in nodes.yml")
+					gc.Fatal(val, "doesn't present in nodes.yml")
 				}
 				nodesForDocker = append(nodesForDocker, val)
 			}
@@ -69,14 +68,14 @@ var dockerCmd = &cobra.Command{
 		}
 		for _, node := range nodesForDocker {
 			if dockerVersion == node.DockerVersion {
-				log.Println("Docker already installer on " + node.Host)
+				gc.Info("Docker already installer on " + node.Host)
 				alreadyInstalled = append(alreadyInstalled, node)
 			} else {
 				notInstalled = append(notInstalled, node)
 			}
 		}
 		if len(notInstalled) == 0 {
-			log.Fatal("Docker version " + dockerVersion + " already installed on all nodesFileName")
+			gc.Fatal("Docker version " + dockerVersion + " already installed on all nodesFileName")
 		}
 		passToKey := readKeyPassword()
 		var channelForNodes = make(chan nodeAndError)
@@ -103,7 +102,7 @@ var dockerCmd = &cobra.Command{
 			aliasesAndNodes[node.Alias] = node
 		}
 		for _, errMsg := range errMsgs {
-			log.Println(errMsg)
+			gc.Info(errMsg)
 		}
 		close(channelForNodes)
 		nodes := make([]node, 0, len(aliasesAndNodes))
