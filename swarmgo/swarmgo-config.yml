@@ -37,11 +37,10 @@ ClusterUser: cluster
 #
 #
 
-# For Bionic Beaver
-#Docker: 18.06.1~ce~3-0~ubuntu
-
-#For Cosmic
-#Docker:5:18.09.2~3-0~ubuntu-cosmic
+Docker:
+  xenial: 18.06.3~ce~3-0~ubuntu
+  bionic: 18.06.3~ce~3-0~ubuntu
+  cosmic: 5:18.09.2~3-0~ubuntu-cosmic
 
 # Containers without prefix "prom/" cause of we recreates them on each host with prefix {{.OrganizationName}}. Look at
 # alertmanager/Dockerfile and node-exporter/Dockerfile for more

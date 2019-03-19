@@ -200,7 +200,7 @@ func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, []node, []no
 			clusterWorkersHost = append(clusterWorkersHost, node)
 		}
 	}
-	return clusterLeaderHost, clusterManagerHosts, clusterManagerHosts
+	return clusterLeaderHost, clusterManagerHosts, clusterWorkersHost
 }
 
 func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) error {
