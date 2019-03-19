@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	swarmgoPrefix            = "swarmgo/"
 	swarmpromFolder          = "swarmprom"
 	swarmpromComposeFileName = swarmpromFolder + "/swarmprom.yml"
 	alertmanagerConfigPath   = swarmpromFolder + "/alertmanager/alertmanager.yml"
@@ -93,7 +92,8 @@ func copyToHost(forCopy *infoForCopy, src string) {
 }
 
 func copyDirToHost(dirPath string, forCopy *infoForCopy) {
-	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, getCurrentDir()), forCopy.config)
+	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath,
+		filepath.ToSlash(getCurrentDir())+"/"), forCopy.config)
 	dirContent, err := ioutil.ReadDir(dirPath)
 	CheckErr(err)
 	for _, dirEntry := range dirContent {
@@ -104,7 +104,7 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	host := forCopy.nodeEntry.node.Host
-	relativePath := substringAfter(filePath, swarmgoPrefix)
+	relativePath := substringAfter(filePath, filepath.ToSlash(getCurrentDir())+"/")
 	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
 	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)
