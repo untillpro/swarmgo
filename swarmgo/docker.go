@@ -34,14 +34,8 @@ var dockerCmd = &cobra.Command{
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					gc.Info("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("docker")
+		defer finitCommand()
 		clusterFile := unmarshalClusterYml()
 		dockerVersion := clusterFile.Docker
 		nodesFromYaml := getNodesFromYml(getCurrentDir())

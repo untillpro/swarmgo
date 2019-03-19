@@ -36,14 +36,8 @@ var swarmCmd = &cobra.Command{
 	Long: `swarm with -m installs swarm manager nodes on given Aliases, swarm installs swarm workers on other nodes in
  cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					gc.Info("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("swarm")
+		defer finitCommand()
 		clusterFile := unmarshalClusterYml()
 		if mode && len(args) == 0 {
 			gc.Fatal("Need to pass at least one alias to init swarm!")

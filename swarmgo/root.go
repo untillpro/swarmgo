@@ -20,8 +20,8 @@ type clusterFile struct {
 	ClusterName        string `yaml:"Cluster"`
 	RootUserName       string `yaml:"RootUser"`
 	ClusterUserName    string `yaml:"ClusterUser"`
-	PublicKey          string `yaml:"PublicKey"`
-	PrivateKey         string `yaml:"PrivateKey"`
+	PublicKey          string `yaml:"PublicKey,omitempty"`
+	PrivateKey         string `yaml:"PrivateKey,omitempty"`
 	Docker             string `yaml:"Docker"`
 	Alertmanager       string `yaml:"Alertmanager"`
 	NodeExporter       string `yaml:"NodeExporter"`
@@ -34,12 +34,12 @@ type clusterFile struct {
 	Domain             string `yaml:"Domain"`
 	Email              string `yaml:"Email"`
 	GrafanaUser        string `yaml:"GrafanaUser"`
-	GrafanaPassword    string `yaml:"GrafanaPassword"`
+	GrafanaPassword    string `yaml:",omitempty"`
 	PrometheusUser     string `yaml:"PrometheusUser"`
-	PrometheusPassword string `yaml:"PrometheusPassword"`
+	PrometheusPassword string `yaml:",omitempty"`
 	TraefikUser        string `yaml:"TraefikUser"`
-	TraefikPassword    string `yaml:"TraefikPassword"`
-	WebhookURL         string `yaml:"WebhookURL"`
+	TraefikPassword    string `yaml:",omitempty"`
+	WebhookURL         string `yaml:",omitempty"`
 	ChannelName        string `yaml:"ChannelName"`
 	AlertmanagerUser   string `yaml:"AlertmanagerUser"`
 	Elasticsearch      string `yaml:"Elasticsearch"`
@@ -47,8 +47,8 @@ type clusterFile struct {
 	Kibana             string `yaml:"Kibana"`
 	Logstash           string `yaml:"Logstash"`
 	Curator            string `yaml:"Curator"`
-	CurrentNodeId      string
-	KibanaCreds        string
+	CurrentNodeId      string `yaml:",omitempty"`
+	KibanaCreds        string `yaml:",omitempty"`
 }
 
 var verbose bool
@@ -63,8 +63,8 @@ var rootCmd = &cobra.Command{
 func Execute() {
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-	rootCmd.PersistentFlags().BoolVarP(&logs, "logs", "l", false, "Redirect logs to ./logs/log.log")
 
+	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(addNodeCmd)
 	rootCmd.AddCommand(dockerCmd)
 	rootCmd.AddCommand(eLKCmd)

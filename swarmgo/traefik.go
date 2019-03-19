@@ -49,14 +49,8 @@ var traefikCmd = &cobra.Command{
 	Short: "Install traefik with let's encrypt and consul on swarm cluster",
 	Long:  `Install traefik with let's encrypt and consul on swarm cluster`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					gc.Info("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("traefik")
+		defer finitCommand()
 		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getCurrentDir())
@@ -96,7 +90,7 @@ var traefikCmd = &cobra.Command{
 func storeTraefikConfigToConsul(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
 	gc.Info("Traefik store config started")
 	execSSHCommand(host, "mkdir -p ~/"+traefikFolderName, config)
-	traefikStoreConfig := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikStoreConfigFileName), clusterFile)
+	traefikStoreConfig := executeTemplateToFile(filepath.Join(getCurrentDir(), traefikStoreConfigFileName), clusterFile)
 	execSSHCommand(host, "cat > ~/"+traefikStoreConfigFileName+" << EOF\n\n"+traefikStoreConfig.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikStoreConfigFileName+" traefik", config)
 	gc.Info("Traefik configs stored in consul")
@@ -119,8 +113,8 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 	gc.Info(fmt.Sprintf("Num of managers: %v, bootstrap expect: %v", bootstrap, bootstrapConsul.Bootstrap))
 	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulAgentConfFileName))
 	CheckErr(err)
-	consulServerConf := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), consulServerConfFileName), bootstrapConsul)
-	consulCompose := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), consulComposeFileName), clusterFile)
+	consulServerConf := executeTemplateToFile(filepath.Join(getCurrentDir(), consulServerConfFileName), bootstrapConsul)
+	consulCompose := executeTemplateToFile(filepath.Join(getCurrentDir(), consulComposeFileName), clusterFile)
 	gc.Info("Consul configs modified")
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"agent", config)
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"server", config)
@@ -135,7 +129,7 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 		5, config)
 }
 
-func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
+func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
 	t, err := template.ParseFiles(filePath)
 	var tmplBuffer bytes.Buffer
 	err = t.Execute(&tmplBuffer, tmplExecutor)
@@ -144,7 +138,7 @@ func applyExecutorToTemplateFile(filePath string, tmplExecutor interface{}) *byt
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
-	tmplBuffer := applyExecutorToTemplateFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
+	tmplBuffer := executeTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
 	sudoExecSSHCommand(host, "docker network create -d overlay --opt encrypted webgateway || true", config)
 	gc.Info("webgateway networks created")

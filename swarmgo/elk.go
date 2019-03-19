@@ -29,14 +29,8 @@ var eLKCmd = &cobra.Command{
 	Short: "Deploy ELK stack",
 	Long:  `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					gc.Info("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("elk")
+		defer finitCommand()
 		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		fmt.Println("Enter Kibana login")
@@ -64,7 +58,7 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
 	curDir := getCurrentDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
-	appliedBuffer := applyExecutorToTemplateFile(eLKComposeFileName, clusterFile)
+	appliedBuffer := executeTemplateToFile(eLKComposeFileName, clusterFile)
 	execSSHCommand(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
 		appliedBuffer.String()+"\nEOF", config)
 	gc.Info(eLKComposeFileName, "applied by template")

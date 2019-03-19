@@ -40,14 +40,6 @@ var swarmpromCmd = &cobra.Command{
 	Short: "Create starter kit for swarm monitoring",
 	Long:  `Deploys Prometheus, WebhookURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					gc.Info("Error closing the file: ", err.Error())
-				}
-			}()
-		}
 		initCommand("swarmprom")
 		defer finitCommand()
 
@@ -78,7 +70,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, swarmpromFolder)))
 	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
-		appliedBuffer := applyExecutorToTemplateFile(fileToApplyTemplate, clusterFile)
+		appliedBuffer := executeTemplateToFile(fileToApplyTemplate, clusterFile)
 		execSSHCommand(host, "cat > ~/"+fileToApplyTemplate+" << EOF\n\n"+
 			appliedBuffer.String()+"\nEOF", config)
 		gc.Info(fileToApplyTemplate, "applied by template")
@@ -101,7 +93,7 @@ func copyToHost(forCopy *infoForCopy, src string) {
 }
 
 func copyDirToHost(dirPath string, forCopy *infoForCopy) {
-	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, swarmgoPrefix), forCopy.config)
+	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath, getCurrentDir()), forCopy.config)
 	dirContent, err := ioutil.ReadDir(dirPath)
 	CheckErr(err)
 	for _, dirEntry := range dirContent {
