@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	encryptedFlag              = " --opt encrypted"
 	traefikFolderName          = "traefik/"
 	consulFolderName           = traefikFolderName + "consul/"
 	traefikComposeFileName     = traefikFolderName + "traefik-consul.yml"
@@ -43,6 +44,8 @@ type consul struct {
 	Bootstrap uint8
 }
 
+var encrypted = ""
+
 // traefikCmd represents the traefik command
 var traefikCmd = &cobra.Command{
 	Use:   "traefik",
@@ -56,7 +59,10 @@ var traefikCmd = &cobra.Command{
 		nodes := getNodesFromYml(getCurrentDir())
 		host := firstEntry.node.Host
 		var config = findSSHKeysAndInitConnection(passToKey, clusterFile)
-		sudoExecSSHCommand(host, "docker network create -d overlay --opt encrypted traefik || true", config)
+		if clusterFile.EncryptSwarmNetworks {
+			encrypted = encryptedFlag
+		}
+		sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" hello || true", config)
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
 			traefikComposeName = traefikComposeFileName
@@ -140,7 +146,7 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
 	tmplBuffer := executeTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
-	sudoExecSSHCommand(host, "docker network create -d overlay --opt encrypted webgateway || true", config)
+	sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" webgateway || true", config)
 	gc.Info("webgateway networks created")
 	execSSHCommand(host, "cat > ~/"+traefikFolderName+"traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikFolderName+"traefik.yml traefik", config)

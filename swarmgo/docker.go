@@ -57,7 +57,7 @@ var dockerCmd = &cobra.Command{
 		} else {
 			nodesForDocker = nodesFromYaml
 		}
-		passToKey := readKeyPassword()
+		passToKey := waitUserInput()
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range nodesForDocker {
 			go func(node node) {
@@ -97,15 +97,21 @@ var dockerCmd = &cobra.Command{
 	},
 }
 
-func installDocker(node node, dockerVersions map[string]string, config *ssh.ClientConfig) (node, error) {
+func installDocker(node node, dockerVersions map[string]map[string]string, config *ssh.ClientConfig) (node, error) {
 	host := node.Host
-	oSVersion, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -c", config)
+	oSName, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -i", config)
 	if err != nil {
 		node.DockerVersion = ""
 		return node, err
 	}
-	oSVersion = strings.Trim(substringAfter(oSVersion, "Codename:"), " \t\n")
-	version := dockerVersions[oSVersion]
+	oSVersion, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -r", config)
+	if err != nil {
+		node.DockerVersion = ""
+		return node, err
+	}
+	oSName = strings.Trim(substringAfter(oSName, "Distributor ID:"), " \t\n")
+	oSVersion = strings.Trim(substringAfter(oSVersion, "Release:"), " \t\n")
+	version := dockerVersions[oSName][oSVersion]
 	if checkDockerInstallation(host, version, config) || version == node.DockerVersion {
 		logWithPrefix(host, "Docker version "+version+" already installed!")
 		node.DockerVersion = version

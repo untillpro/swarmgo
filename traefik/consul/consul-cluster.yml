@@ -42,7 +42,7 @@ services:
     volumes:
       - consul:/consul/data
     environment:
-      - CONSUL_HTTP_ADDR=consul.server:8500
+      - CONSUL_HTTP_ADDR=consul.agent:8500
     configs:
       - source: agent
         target: /consul/config/conf.json
@@ -59,7 +59,7 @@ services:
     networks:
       traefik:
         aliases:
-          - consul.server
+          - consul.agent
 
 networks:
   traefik:

@@ -5,10 +5,10 @@
 #
 
 # This parameter will be used as a parameter to create SSH certificate
-Organization: !!!CHANGEME_ORGANIZATION_NAME
+Organization: {{.OrganizationName}}
 
 # Used to name SSH certificate
-Cluster: !!!CHANGEME_ORGANIZATION_NAME
+Cluster: {{.ClusterName}}
 
 # This user will be used to create ClusterUser, after that this account will be disabled
 # Password login for this user MUST be enabled
@@ -38,9 +38,10 @@ ClusterUser: cluster
 #
 
 Docker:
-  xenial: 18.06.3~ce~3-0~ubuntu
-  bionic: 18.06.3~ce~3-0~ubuntu
-  cosmic: 5:18.09.2~3-0~ubuntu-cosmic
+  Ubuntu:
+    16.04: 18.06.3~ce~3-0~ubuntu
+    18.04: 18.06.3~ce~3-0~ubuntu
+    18.10: 5:18.09.2~3-0~ubuntu-cosmic
 
 # Containers without prefix "prom/" cause of we recreates them on each host with prefix {{.OrganizationName}}. Look at
 # alertmanager/Dockerfile and node-exporter/Dockerfile for more
@@ -57,6 +58,16 @@ Filebeat: kindratte/filebeat:6.5.4
 Kibana: docker.elastic.co/kibana/kibana-oss:6.5.4
 Logstash: docker.elastic.co/logstash/logstash-oss:6.5.4
 Curator: kindratte/curator:5.4
+
+# ************************************************************
+#
+# Swarm networks configuration
+#
+#
+
+# If true docker networks ("traefik" and "webgateway") creates with flag --opt encrypted and encrypts traffic between nodes
+
+EncryptSwarmNetworks: true
 
 # ************************************************************
 #

@@ -16,39 +16,40 @@ import (
 )
 
 type clusterFile struct {
-	OrganizationName   string            `yaml:"Organization"`
-	ClusterName        string            `yaml:"Cluster"`
-	RootUserName       string            `yaml:"RootUser"`
-	ClusterUserName    string            `yaml:"ClusterUser"`
-	PublicKey          string            `yaml:"PublicKey,omitempty"`
-	PrivateKey         string            `yaml:"PrivateKey,omitempty"`
-	Docker             map[string]string `yaml:"Docker"`
-	Alertmanager       string            `yaml:"Alertmanager"`
-	NodeExporter       string            `yaml:"NodeExporter"`
-	Prometheus         string            `yaml:"Prometheus"`
-	Grafana            string            `yaml:"Grafana"`
-	Traefik            string            `yaml:"Traefik"`
-	Cadvisor           string            `yaml:"Cadvisor"`
-	Consul             string            `yaml:"Consul"`
-	ACMEEnabled        bool              `yaml:"ACMEEnabled"`
-	Domain             string            `yaml:"Domain"`
-	Email              string            `yaml:"Email"`
-	GrafanaUser        string            `yaml:"GrafanaUser"`
-	GrafanaPassword    string            `yaml:",omitempty"`
-	PrometheusUser     string            `yaml:"PrometheusUser"`
-	PrometheusPassword string            `yaml:",omitempty"`
-	TraefikUser        string            `yaml:"TraefikUser"`
-	TraefikPassword    string            `yaml:",omitempty"`
-	WebhookURL         string            `yaml:",omitempty"`
-	ChannelName        string            `yaml:"ChannelName"`
-	AlertmanagerUser   string            `yaml:"AlertmanagerUser"`
-	Elasticsearch      string            `yaml:"Elasticsearch"`
-	Filebeat           string            `yaml:"Filebeat"`
-	Kibana             string            `yaml:"Kibana"`
-	Logstash           string            `yaml:"Logstash"`
-	Curator            string            `yaml:"Curator"`
-	CurrentNodeId      string            `yaml:",omitempty"`
-	KibanaCreds        string            `yaml:",omitempty"`
+	OrganizationName     string                       `yaml:"Organization"`
+	ClusterName          string                       `yaml:"Cluster"`
+	RootUserName         string                       `yaml:"RootUser"`
+	ClusterUserName      string                       `yaml:"ClusterUser"`
+	PublicKey            string                       `yaml:"PublicKey"`
+	PrivateKey           string                       `yaml:"PrivateKey"`
+	Docker               map[string]map[string]string `yaml:"Docker"`
+	Alertmanager         string                       `yaml:"Alertmanager"`
+	NodeExporter         string                       `yaml:"NodeExporter"`
+	Prometheus           string                       `yaml:"Prometheus"`
+	Grafana              string                       `yaml:"Grafana"`
+	Traefik              string                       `yaml:"Traefik"`
+	Cadvisor             string                       `yaml:"Cadvisor"`
+	Consul               string                       `yaml:"Consul"`
+	ACMEEnabled          bool                         `yaml:"ACMEEnabled"`
+	Domain               string                       `yaml:"Domain"`
+	Email                string                       `yaml:"Email"`
+	GrafanaUser          string                       `yaml:"GrafanaUser"`
+	PrometheusUser       string                       `yaml:"PrometheusUser"`
+	TraefikUser          string                       `yaml:"TraefikUser"`
+	ChannelName          string                       `yaml:"ChannelName"`
+	AlertmanagerUser     string                       `yaml:"AlertmanagerUser"`
+	Elasticsearch        string                       `yaml:"Elasticsearch"`
+	Filebeat             string                       `yaml:"Filebeat"`
+	Kibana               string                       `yaml:"Kibana"`
+	Logstash             string                       `yaml:"Logstash"`
+	Curator              string                       `yaml:"Curator"`
+	EncryptSwarmNetworks bool                         `yaml:"EncryptSwarmNetworks"`
+	TraefikPassword      string
+	WebhookURL           string
+	GrafanaPassword      string
+	CurrentNodeId        string
+	KibanaCreds          string
+	PrometheusPassword   string
 }
 
 var verbose bool
