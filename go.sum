@@ -23,10 +23,8 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/tmc/scp v0.0.0-20170824174625-f7b48647feef h1:7D6Nm4D6f0ci9yttWaKjM1TMAXrH5Su72dojqYGntFY=
 github.com/tmc/scp v0.0.0-20170824174625-f7b48647feef/go.mod h1:WLFStEdnJXpjK8kd4qKLwQKX/1vrDzp5BcDyiZJBHJM=
-github.com/untillpro/gochips v1.5.0 h1:nMJaVcouJoglAkRQma2DdjQLLWZKEWRLgCe00Tbxvnw=
-github.com/untillpro/gochips v1.5.0/go.mod h1:us8QSJtQx+8SiWFqh2oAT7UMzhF73t21p3WFGn6Apao=
-github.com/untillpro/swarmgo v1.2.0 h1:/pJOxfIPczvjFUommxiAm3R5OTb/sP146aUOrarmdNc=
-github.com/untillpro/swarmgo v1.2.0/go.mod h1:oH9ShzR3vmFftFgBiWKgd4D477+RSfq/UA+ikAsD0ko=
+github.com/untillpro/gochips v1.6.0 h1:5xBZrYS08IH7tIWJ4crW+Cr44YfM+0Glv9yZq5tTg78=
+github.com/untillpro/gochips v1.6.0/go.mod h1:us8QSJtQx+8SiWFqh2oAT7UMzhF73t21p3WFGn6Apao=
 golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25 h1:jsG6UpNLt9iAsb0S2AGW28DveNzzgmbXR+ENoPjUeIU=
 golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

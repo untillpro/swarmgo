@@ -22,11 +22,11 @@ import (
 	"syscall"
 	"time"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 func readPasswordPrompt(prompt string) string {
@@ -224,7 +224,7 @@ func numberHostsFromNodesFile(nodesFromYml []node) string {
 		hostsWithNumbers[i] = nodesFromYml[i].Alias
 		i++
 	}
-	log.Println("Please choose number of node from `nodesFileName`")
+	gc.Info("Please choose number of node from `nodesFileName`")
 	return inputFuncForHosts(hostsWithNumbers)
 }
 
@@ -233,13 +233,13 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 	for k, v := range hostsWithNumbers {
 		fmt.Printf("%d : %s\n", k, v)
 	}
-	log.Println("\n" + b.String())
+	gc.Info("\n" + b.String())
 	input := waitUserInput()
 	convertedInput := convertStringToInt(input)
 	if value, ok := hostsWithNumbers[convertedInput]; ok {
 		return value
 	}
-	log.Println("Wrong number, specifys one of this!")
+	gc.Info("Wrong number, specifys one of this!")
 	return inputFuncForHosts(hostsWithNumbers)
 }
 
@@ -254,7 +254,7 @@ func unmarshalClusterYml() *clusterFile {
 func findSSHKeysAndInitConnection(passToKey string, config *clusterFile) *ssh.ClientConfig {
 	_, privateKeyFile := findSSHKeys(config)
 	if !FileExists(privateKeyFile) {
-		log.Fatal("Can't find private key to connect to remote server!")
+		gc.Fatal("Can't find private key to connect to remote server!")
 	}
 	return initSSHConnectionConfigWithPublicKeys(config.ClusterUserName, privateKeyFile, passToKey)
 }

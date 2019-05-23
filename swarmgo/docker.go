@@ -11,7 +11,6 @@ package swarmgo
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -19,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
 	"golang.org/x/crypto/ssh"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const docker = "docker-ce"
@@ -35,22 +34,13 @@ var dockerCmd = &cobra.Command{
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					log.Println("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("docker")
+		defer finitCommand()
 		clusterFile := unmarshalClusterYml()
-		dockerVersion := clusterFile.Docker
 		nodesFromYaml := getNodesFromYml(getCurrentDir())
 		if len(nodesFromYaml) == 0 {
-			log.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
-		alreadyInstalled := make([]node, 0, len(nodesFromYaml))
-		notInstalled := make([]node, 0, len(nodesFromYaml))
 		aliasesAndNodes := make(map[string]node)
 		for _, node := range nodesFromYaml {
 			aliasesAndNodes[node.Alias] = node
@@ -60,30 +50,19 @@ var dockerCmd = &cobra.Command{
 			for _, arg := range args {
 				val, ok := aliasesAndNodes[arg]
 				if !ok {
-					log.Fatal(val, "doesn't present in nodes.yml")
+					gc.Fatal(val, "doesn't present in nodes.yml")
 				}
 				nodesForDocker = append(nodesForDocker, val)
 			}
 		} else {
 			nodesForDocker = nodesFromYaml
 		}
-		for _, node := range nodesForDocker {
-			if dockerVersion == node.DockerVersion {
-				log.Println("Docker already installer on " + node.Host)
-				alreadyInstalled = append(alreadyInstalled, node)
-			} else {
-				notInstalled = append(notInstalled, node)
-			}
-		}
-		if len(notInstalled) == 0 {
-			log.Fatal("Docker version " + dockerVersion + " already installed on all nodesFileName")
-		}
-		passToKey := readKeyPassword()
+		passToKey := waitUserInput()
 		var channelForNodes = make(chan nodeAndError)
-		for _, currentNode := range notInstalled {
+		for _, currentNode := range nodesForDocker {
 			go func(node node) {
 				config := findSSHKeysAndInitConnection(passToKey, clusterFile)
-				nodeFromGoroutine, err := installDocker(node, dockerVersion, config)
+				nodeFromGoroutine, err := installDocker(node, clusterFile.Docker, config)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
@@ -92,7 +71,7 @@ var dockerCmd = &cobra.Command{
 			}(currentNode)
 		}
 		errMsgs := make([]string, 0, len(args))
-		for range notInstalled {
+		for range nodesForDocker {
 			nodeWithPossibleError := <-channelForNodes
 			node := nodeWithPossibleError.nodeWithPossibleError
 			err := nodeWithPossibleError.err
@@ -103,7 +82,7 @@ var dockerCmd = &cobra.Command{
 			aliasesAndNodes[node.Alias] = node
 		}
 		for _, errMsg := range errMsgs {
-			log.Println(errMsg)
+			gc.Info(errMsg)
 		}
 		close(channelForNodes)
 		nodes := make([]node, 0, len(aliasesAndNodes))
@@ -118,15 +97,28 @@ var dockerCmd = &cobra.Command{
 	},
 }
 
-func installDocker(node node, version string, config *ssh.ClientConfig) (node, error) {
+func installDocker(node node, dockerVersions map[string]map[string]string, config *ssh.ClientConfig) (node, error) {
 	host := node.Host
-	if checkDockerInstallation(host, version, config) {
+	oSName, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -i", config)
+	if err != nil {
+		node.DockerVersion = ""
+		return node, err
+	}
+	oSVersion, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -r", config)
+	if err != nil {
+		node.DockerVersion = ""
+		return node, err
+	}
+	oSName = strings.Trim(substringAfter(oSName, "Distributor ID:"), " \t\n")
+	oSVersion = strings.Trim(substringAfter(oSVersion, "Release:"), " \t\n")
+	version := dockerVersions[oSName][oSVersion]
+	if checkDockerInstallation(host, version, config) || version == node.DockerVersion {
 		logWithPrefix(host, "Docker version "+version+" already installed!")
 		node.DockerVersion = version
 		return node, nil
 	}
 	logWithPrefix(host, "Updating apt-get...")
-	_, err := sudoExecSSHCommandWithoutPanic(host, "apt-get update", config)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get update", config)
 	if err != nil {
 		node.DockerVersion = ""
 		return node, err

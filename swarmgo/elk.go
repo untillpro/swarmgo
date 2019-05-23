@@ -10,7 +10,7 @@ package swarmgo
 
 import (
 	"fmt"
-	"log"
+	gc "github.com/untillpro/gochips"
 	"path/filepath"
 	"strings"
 
@@ -29,14 +29,8 @@ var eLKCmd = &cobra.Command{
 	Short: "Deploy ELK stack",
 	Long:  `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if logs {
-			f := redirectLogs()
-			defer func() {
-				if err := f.Close(); err != nil {
-					log.Println("Error closing the file: ", err.Error())
-				}
-			}()
-		}
+		initCommand("elk")
+		defer finitCommand()
 		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		fmt.Println("Enter Kibana login")
@@ -46,7 +40,7 @@ var eLKCmd = &cobra.Command{
 		kibanaHashedPass := strings.Replace(hashPassword(kibanaPass), "$", "\\$\\$", -1)
 		clusterFile.KibanaCreds = fmt.Sprintf("%s:%s", kibanaUser, kibanaHashedPass)
 		if !firstEntry.node.Traefik {
-			log.Fatal("Need to deploy traefik before elk deploy")
+			gc.Fatal("Need to deploy traefik before elk deploy")
 		}
 		deployELKStack(passToKey, clusterFile, firstEntry)
 	},
@@ -60,20 +54,20 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 		config,
 		clusterFile,
 	}
-	log.Println("Trying to install dos2unix")
+	gc.Info("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
 	curDir := getCurrentDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
-	appliedBuffer := applyExecutorToTemplateFile(eLKComposeFileName, clusterFile)
+	appliedBuffer := executeTemplateToFile(eLKComposeFileName, clusterFile)
 	execSSHCommand(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
 		appliedBuffer.String()+"\nEOF", config)
-	log.Println(eLKComposeFileName, "applied by template")
-	log.Println("Increasing vm.max_map_count")
+	gc.Info(eLKComposeFileName, "applied by template")
+	gc.Info("Increasing vm.max_map_count")
 	increaseVMMaxMapCount(passToKey, clusterFile)
-	log.Println("Increased")
-	log.Println("Trying to deploy ELK")
+	gc.Info("Increased")
+	gc.Info("Trying to deploy ELK")
 	sudoExecSSHCommand(host, "docker stack deploy -c "+eLKComposeFileName+" elk", config)
-	log.Println("ELK deployed")
+	gc.Info("ELK deployed")
 }
 
 func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
@@ -98,7 +92,7 @@ func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
 		}
 	}
 	if len(errors) != 0 {
-		log.Fatal(errors)
+		gc.Fatal(errors)
 	}
 	close(doneChannel)
 }
