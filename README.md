@@ -14,8 +14,8 @@ Steps:
 - Fork swarmgo repo to `mycluster`
 - git clone `mycluster`
 - Run `go build swarmgo.go` to build swarmgo executable
-- Edit `swarmgo-config.yml` and other configs
-- Run `swarmgo node add <Alias1>=<IP1> <Alias2>=<IP2>`
+- Use `swarmgo init` to init configs and change `swarmgo-config.yml` in root folder if needed
+- Run `swarmgo add <Alias1>=<IP1> <Alias2>=<IP2>`
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
   - Node will be added to `nodes` file
@@ -26,6 +26,7 @@ Steps:
 - Run `swarmgo swarm`
   - Install swarm in `worker` mode for all nodes which do not have swarm configured yet
   - At least one manager must be configured first
+- Run `swarmgo traefik` to deploy traefik
 - Run `swarmgo swarmprom`
   - https://domen/grafana
 
