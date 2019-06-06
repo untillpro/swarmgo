@@ -39,6 +39,7 @@ ClusterUser: cluster
 
 Docker:
   Ubuntu:
+    14.04: 18.06.1~ce~3-0~ubuntu
     16.04: 18.06.3~ce~3-0~ubuntu
     18.04: 18.06.3~ce~3-0~ubuntu
     18.10: 5:18.09.2~3-0~ubuntu-cosmic

@@ -62,7 +62,7 @@ var traefikCmd = &cobra.Command{
 		if clusterFile.EncryptSwarmNetworks {
 			encrypted = encryptedFlag
 		}
-		sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" hello || true", config)
+		sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" traefik || true", config)
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
 			traefikComposeName = traefikComposeFileName
