@@ -81,7 +81,7 @@ var swarmCmd = &cobra.Command{
 		}
 		var nodeVar node
 		if clusterLeaderNode == (node{}) {
-			nodeVar, nodesWithoutSwarm = initSwarm(nodesFromYml, nodesWithoutSwarm, args, passToKey,
+			nodeVar, nodesWithoutSwarm = initSwarm(nodesWithoutSwarm, args, passToKey,
 				clusterFile)
 			nodeHostAndNode[nodeVar.Host] = nodeVar
 			clusterLeaderNode = nodeVar
@@ -132,25 +132,21 @@ func getToken(mode, host string, config *ssh.ClientConfig) string {
 }
 
 func reloadUfwAndDocker(host string, config *ssh.ClientConfig) error {
-	gc.Info("Restarting ufw and docker...")
+	gc.Info("Restarting ufw...")
 	_, err := sudoExecSSHCommandWithoutPanic(host, "ufw reload", config)
 	if err != nil {
 		return err
 	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "systemctl restart docker", config)
-	if err != nil {
-		return err
-	}
-	gc.Info("Ufw and docker restarted!")
+	gc.Info("Ufw restarted!")
 	return nil
 }
 
-func initSwarm(nodesFromYml []node, nodes []node, args []string,
+func initSwarm(nodes []node, args []string,
 	passToKey string, file *clusterFile) (node, []node) {
 	gc.Info("Need to initiate swarm leader")
 	var alias string
 	alias = args[0]
-	node, index := findNodeByAliasFromNodesYml(alias, nodesFromYml)
+	node, index := findNodeByAliasFromNodesYml(alias, nodes)
 	host := node.Host
 	config := findSSHKeysAndInitConnection(passToKey, file)
 	err := configUfwToWorkInSwarmMode(host, config)

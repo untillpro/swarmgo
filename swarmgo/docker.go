@@ -57,7 +57,7 @@ var dockerCmd = &cobra.Command{
 		} else {
 			nodesForDocker = nodesFromYaml
 		}
-		passToKey := waitUserInput()
+		passToKey := readKeyPassword()
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range nodesForDocker {
 			go func(node node) {
