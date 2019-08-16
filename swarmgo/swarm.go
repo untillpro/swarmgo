@@ -42,7 +42,7 @@ var swarmCmd = &cobra.Command{
 		if mode && len(args) == 0 {
 			gc.Fatal("Need to pass at least one alias to init swarm!")
 		}
-		nodesFromYml := getNodesFromYml(getCurrentDir())
+		nodesFromYml := getNodesFromYml(getWorkingDir())
 		if len(nodesFromYml) == 0 {
 			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
@@ -120,7 +120,7 @@ var swarmCmd = &cobra.Command{
 		}
 		marshaledNode, err := yaml.Marshal(&nodes)
 		CheckErr(err)
-		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
+		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
 		CheckErr(err)
 	},
@@ -260,7 +260,7 @@ func joinToSwarm(node node, leaderHost, passToKey string, file *clusterFile) (no
 
 func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
 	clusterFile := unmarshalClusterYml()
-	nodesFromYml := getNodesFromYml(getCurrentDir())
+	nodesFromYml := getNodesFromYml(getWorkingDir())
 	if len(nodesFromYml) == 0 {
 		gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 	}

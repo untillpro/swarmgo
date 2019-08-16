@@ -69,7 +69,7 @@ func doingWithPrefix(prefix, str string) {
 }
 
 func redirectLogs() *os.File {
-	parent := filepath.Join(getCurrentDir(), "logs")
+	parent := filepath.Join(getSourcesDir(), "logs")
 	err := os.MkdirAll(parent, os.ModePerm)
 	CheckErr(err)
 	f, err := os.OpenFile(filepath.Join(parent, "log.log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
@@ -155,7 +155,7 @@ func containsNode(slice []node, find node) bool {
 }
 
 func readFileIfExists(fileName, errorMessage string) []byte {
-	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), fileName))
+	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getSourcesDir(), fileName))
 	if err != nil {
 		if os.IsNotExist(err) {
 			gc.ExitIfError(err, errorMessage)
@@ -283,7 +283,11 @@ func substringAfter(value string, a string) string {
 	return value[adjustedPos:]
 }
 
-func getCurrentDir() string {
+func getWorkingDir() string {
+	return workingDir
+}
+
+func getSourcesDir() string {
 	pwd, err := os.Getwd()
 	CheckErr(err)
 	return pwd

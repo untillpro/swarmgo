@@ -65,7 +65,7 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	}
 	gc.Info("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
-	curDir := getCurrentDir()
+	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, swarmpromFolder)))
 	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
@@ -93,7 +93,7 @@ func copyToHost(forCopy *infoForCopy, src string) {
 
 func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath,
-		filepath.ToSlash(getCurrentDir())+"/"), forCopy.config)
+		filepath.ToSlash(getSourcesDir())+"/"), forCopy.config)
 	dirContent, err := ioutil.ReadDir(dirPath)
 	CheckErr(err)
 	for _, dirEntry := range dirContent {
@@ -104,7 +104,7 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	host := forCopy.nodeEntry.node.Host
-	relativePath := substringAfter(filePath, filepath.ToSlash(getCurrentDir())+"/")
+	relativePath := substringAfter(filePath, filepath.ToSlash(getSourcesDir())+"/")
 	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
 	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)

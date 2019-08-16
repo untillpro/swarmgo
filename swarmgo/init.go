@@ -1,10 +1,11 @@
 package swarmgo
 
 import (
-	"github.com/spf13/cobra"
-	gc "github.com/untillpro/gochips"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
+	gc "github.com/untillpro/gochips"
 )
 
 var initCmd = &cobra.Command{
@@ -14,7 +15,7 @@ var initCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initCommand("init")
 		defer finitCommand()
-		clusterFilePath := filepath.Join(getCurrentDir(), swarmgoConfigFileName)
+		clusterFilePath := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
 		if FileExists(clusterFilePath) {
 			gc.Info("swarmgo-config.yml already initialized!")
 			return

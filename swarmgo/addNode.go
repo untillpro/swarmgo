@@ -48,7 +48,7 @@ func add(cmd *cobra.Command, args []string) {
 	gc.Verbose("ClusterName", clusterFile.ClusterName)
 	gc.Verbose("RootUserName", rootUserName)
 
-	nodesFromYaml := getNodesFromYml(getCurrentDir())
+	nodesFromYaml := getNodesFromYml(getWorkingDir())
 
 	// *************************************************
 	gc.Doing("Getting existing nodeNames and nodeIPs")
@@ -152,7 +152,7 @@ func add(cmd *cobra.Command, args []string) {
 	close(nodesChannel)
 	marshaledNode, err := yaml.Marshal(&nodesFromYaml)
 	gc.ExitIfError(err)
-	nodesFile := filepath.Join(getCurrentDir(), nodesFileName)
+	nodesFile := filepath.Join(getWorkingDir(), nodesFileName)
 	err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
 	gc.ExitIfError(err)
 }

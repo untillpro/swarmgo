@@ -37,7 +37,7 @@ var dockerCmd = &cobra.Command{
 		initCommand("docker")
 		defer finitCommand()
 		clusterFile := unmarshalClusterYml()
-		nodesFromYaml := getNodesFromYml(getCurrentDir())
+		nodesFromYaml := getNodesFromYml(getWorkingDir())
 		if len(nodesFromYaml) == 0 {
 			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
 		}
@@ -91,7 +91,7 @@ var dockerCmd = &cobra.Command{
 		}
 		marshaledNode, err := yaml.Marshal(&nodes)
 		CheckErr(err)
-		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
+		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
 		CheckErr(err)
 	},
