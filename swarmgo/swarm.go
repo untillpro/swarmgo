@@ -39,12 +39,13 @@ var swarmCmd = &cobra.Command{
 		initCommand("swarm")
 		defer finitCommand()
 		clusterFile := unmarshalClusterYml()
+		// TODO mode ???
 		if mode && len(args) == 0 {
-			gc.Fatal("Need to pass at least one alias to init swarm!")
+			gc.Fatal("Need at least one node alias")
 		}
 		nodesFromYml := getNodesFromYml(getWorkingDir())
 		if len(nodesFromYml) == 0 {
-			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first")
 		}
 		nodeHostAndNode := make(map[string]node)
 		for _, value := range nodesFromYml {
@@ -53,10 +54,10 @@ var swarmCmd = &cobra.Command{
 		clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
 		if clusterLeaderNode == (node{}) {
 			if !mode {
-				gc.Fatal("Need to specify -manager to init swarm!")
+				gc.Fatal("Use `-manager` flag to init swarm")
 			}
 			if len(args) == 0 {
-				gc.Fatal("Need to pass at least one alias to init swarm!")
+				gc.Fatal("Need to pass at least one alias to init swarm")
 			}
 		}
 		passToKey := readKeyPassword()
@@ -65,7 +66,7 @@ var swarmCmd = &cobra.Command{
 			if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||
 				containsNode(clusterWorkerNodes, nodeFromYml) {
 				if contains(args, nodeFromYml.Alias) {
-					gc.Info(nodeFromYml.Alias + " already in swarm!")
+					gc.Info(nodeFromYml.Alias + " already in swarm")
 				}
 				continue
 			}
@@ -143,7 +144,6 @@ func reloadUfwAndDocker(host string, config *ssh.ClientConfig) error {
 
 func initSwarm(nodes []node, args []string,
 	passToKey string, file *clusterFile) (node, []node) {
-	gc.Info("Need to initiate swarm leader")
 	var alias string
 	alias = args[0]
 	node, index := findNodeByAliasFromNodesYml(alias, nodes)
@@ -158,7 +158,7 @@ func initSwarm(nodes []node, args []string,
 	sudoExecSSHCommand(host, "docker swarm init --advertise-addr "+host, config)
 	nodes = append(nodes[:index], nodes[index+1:]...)
 	node.SwarmMode = leader
-	gc.Info("Swarm initiated! Leader node is " + alias)
+	gc.Info("Swarm initialized, leader node is " + alias)
 	return node, nodes
 }
 
@@ -249,12 +249,14 @@ func joinToSwarm(node node, leaderHost, passToKey string, file *clusterFile) (no
 		node.SwarmMode = ""
 		return node, err
 	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, token, config)
+	gc.Doing("Joining " + host + " to swarm")
+	// ">" is used to avoid logging
+	_, err = execSSHCommandWithoutPanic(host, ">sudo "+token, config)
 	if err != nil {
 		node.SwarmMode = ""
 		return node, err
 	}
-	logWithPrefix(node.Host, node.Alias+" successfully joined to swarm!")
+	logWithPrefix(node.Host, node.Alias+" successfully joined swarm")
 	return node, nil
 }
 
@@ -262,7 +264,7 @@ func getSwarmLeaderNodeAndClusterFile() (*entry, *clusterFile) {
 	clusterFile := unmarshalClusterYml()
 	nodesFromYml := getNodesFromYml(getWorkingDir())
 	if len(nodesFromYml) == 0 {
-		gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
+		gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first")
 	}
 	var firstEntry *entry
 	//need to create networks in manager node

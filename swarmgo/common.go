@@ -96,7 +96,11 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	gc.Verbose("SSH", host+", "+cmd)
+	if strings.HasPrefix(cmd, ">") {
+		cmd = cmd[1:]
+	} else {
+		gc.Verbose("SSH", host+", "+cmd)
+	}
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	if err != nil {
 		gc.Verbose("SSH:Dial failed", "")
