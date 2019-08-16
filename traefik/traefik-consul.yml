@@ -20,7 +20,7 @@ services:
       placement:
         constraints:
           - node.role == manager
-          - node.id == {{.CurrentNodeId}}
+          - node.id == {{.CurrentNodeID}}
       labels:
         - traefik.enable=true
         - traefik.backend=traefik
