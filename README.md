@@ -36,6 +36,11 @@ Services:
 - mycluster.io/graphana
 - mycluster.io/prometheus
 
+# Developer Guide
+
+- Use flag `--wd` to keep working files away from sources
+
+
 # Under the Hood
 
 Networks:
