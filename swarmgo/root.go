@@ -53,7 +53,6 @@ type clusterFile struct {
 }
 
 var verbose bool
-var workingDir string
 var logs bool
 
 var rootCmd = &cobra.Command{
@@ -65,8 +64,6 @@ var rootCmd = &cobra.Command{
 func Execute() {
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-	rootCmd.PersistentFlags().StringVarP(&workingDir, "wd", "w", ".", "Working directory")
-
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(addNodeCmd)
 	rootCmd.AddCommand(dockerCmd)

@@ -37,7 +37,7 @@ func add(cmd *cobra.Command, args []string) {
 	// *************************************************
 	gc.Doing("Reading config")
 
-	readFileIfExists(swarmgoConfigFileName, "Need to exec swamgo init first!")
+	readWorkingFileIfExists(swarmgoConfigFileName, "Config file not found, to create it run `swarmgo init`")
 	clusterFile := unmarshalClusterYml()
 	rootUserName := clusterFile.RootUserName
 	if strings.Trim(rootUserName, " \n") == "" {

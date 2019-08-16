@@ -1,6 +1,7 @@
 package swarmgo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
@@ -17,13 +18,13 @@ var initCmd = &cobra.Command{
 		defer finitCommand()
 		clusterFilePath := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
 		if FileExists(clusterFilePath) {
-			gc.Info("swarmgo-config.yml already initialized!")
+			gc.Info("swarmgo-config.yml already created")
 			return
 		}
 		clusterFile := clusterFile{}
-		gc.Info("Enter your organization name")
+		fmt.Print("Enter your organization name:")
 		clusterFile.OrganizationName = waitUserInput()
-		gc.Info("Enter your cluster name")
+		fmt.Print("Enter your cluster name:")
 		clusterFile.ClusterName = waitUserInput()
 		defaultClusterFileRelativePath := filepath.Join("swarmgo", swarmgoConfigFileName)
 		if !FileExists(defaultClusterFileRelativePath) {
@@ -32,6 +33,6 @@ var initCmd = &cobra.Command{
 		configEntry := executeTemplateToFile(defaultClusterFileRelativePath, clusterFile)
 		err := ioutil.WriteFile(clusterFilePath, configEntry.Bytes(), 0644)
 		CheckErr(err)
-		gc.Info("swarmgo-config.yml created in root folder, check products versions and modify it if needed")
+		gc.Info("swarmgo-config.yml created in " + getWorkingDir() + " folder, perhaps you will have to modify some variables")
 	},
 }

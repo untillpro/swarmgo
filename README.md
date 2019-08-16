@@ -38,7 +38,10 @@ Services:
 
 # Developer Guide
 
-- Use flag `--wd` to keep working files away from sources
+- Create `.nodes` folder to keep nodes related files
+  - This filder will be choosen automatically
+  - This folder is ignored by git
+
 
 
 # Under the Hood
