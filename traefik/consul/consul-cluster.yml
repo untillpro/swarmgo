@@ -17,7 +17,7 @@ services:
     volumes:
       - consul:/consul/data
     environment:
-      - CONSUL_HTTP_ADDR=consul.server:8500
+      - CONSUL_HTTP_ADDR=consul_server:8500
     configs:
       - source: server
         target: /consul/config/conf.json
@@ -32,9 +32,7 @@ services:
         delay: 5s
         window: 120s
     networks:
-      traefik:
-        aliases:
-          - consul.server
+      - traefik
 
   consul_agent:
     image: {{.Consul}}
@@ -42,7 +40,7 @@ services:
     volumes:
       - consul:/consul/data
     environment:
-      - CONSUL_HTTP_ADDR=consul.agent:8500
+      - CONSUL_HTTP_ADDR=consul_agent:8500
     configs:
       - source: agent
         target: /consul/config/conf.json
@@ -57,9 +55,7 @@ services:
         delay: 5s
         window: 120s
     networks:
-      traefik:
-        aliases:
-          - consul.agent
+      - traefik
 
 networks:
   traefik:

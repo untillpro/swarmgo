@@ -6,6 +6,6 @@
   "bootstrap_expect": {{.Bootstrap}},
   "server": true,
   "retry_join": [
-    "consul.server"
+    "consul_server"
   ]
 }

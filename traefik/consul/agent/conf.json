@@ -4,6 +4,6 @@
   "bind_addr": "{{ GetInterfaceIP \"eth0\" }}",
   "client_addr": "{{ GetInterfaceIP \"eth0\" }}",
   "retry_join": [
-    "consul.server"
+    "consul_server"
   ]
 }

@@ -5,7 +5,7 @@ services:
     image: {{.Traefik}}
     command:
       - "--consul"
-      - "--consul.endpoint=consul.server:8500"
+      - "--consul.endpoint=consul_server:8500"
       - "--consul.prefix=traefik"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
