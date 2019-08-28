@@ -250,8 +250,8 @@ func joinToSwarm(node node, leaderHost, passToKey string, file *clusterFile) (no
 		return node, err
 	}
 	gc.Doing("Joining " + host + " to swarm")
-	// ">" is used to avoid logging
-	_, err = execSSHCommandWithoutPanic(host, ">sudo "+token, config)
+	// "!" is used to avoid logging
+	_, err = execSSHCommandWithoutPanic(host, "!sudo "+token, config)
 	if err != nil {
 		node.SwarmMode = ""
 		return node, err

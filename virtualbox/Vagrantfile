@@ -9,19 +9,17 @@ SCRIPT
 
 Vagrant.configure("2") do |config|
 
-
   config.vm.box = "generic/ubuntu1804" # Bionic Beavier
-#  config.vm.box = "generic/ubuntu1810" # Cosmic
+  config.vm.provision "shell", inline: $script1
 
   (1..3).each do |i|
     nname = "node#{i}"
     config.vm.define "#{nname}" do |node|                       
-      config.vm.provision "shell", inline: $script1          
       node.vm.hostname = "#{nname}" #host name
       node.vm.network "private_network", ip: "192.168.99.#{10+i-1}"
     	node.vm.provider :virtualbox do |vb|                   
-        vb.name = "#{nname}" #virtual box machine name          
-        vb.memory = "2028"                                   
+        vb.name = "#{nname}" #virtual box machine name
+        vb.memory = "2028"
       end                                                    
     end                                                      
   end

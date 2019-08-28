@@ -96,7 +96,7 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	if strings.HasPrefix(cmd, ">") {
+	if strings.HasPrefix(cmd, "!") {
 		cmd = cmd[1:]
 	} else {
 		gc.Verbose("SSH", host+", "+cmd)
