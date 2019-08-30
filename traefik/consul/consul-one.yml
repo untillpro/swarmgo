@@ -11,22 +11,18 @@ configs:
 
 services:
 
-  consul_server:
+  consul_main_server1:
     image: {{.Consul}}
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
       - consul:/consul/data
-    environment:
-      - CONSUL_HTTP_ADDR=consul.server:8500
     configs:
       - source: server
         target: /consul/config/conf.json
     deploy:
-      mode: global
-      endpoint_mode: dnsrr
       placement:
         constraints:
-          - node.role == manager
+          - node.id == {{.NodeID1}}
       restart_policy:
         condition: any
         delay: 5s
@@ -34,32 +30,27 @@ services:
     networks:
       traefik:
         aliases:
-          - consul.server
+          - consul_main
 
   consul_agent:
     image: {{.Consul}}
     command: "consul agent -config-file /consul/config/conf.json"
     volumes:
       - consul:/consul/data
-    environment:
-      - CONSUL_HTTP_ADDR=consul.agent:8500
     configs:
       - source: agent
         target: /consul/config/conf.json
     deploy:
       mode: global
-      endpoint_mode: dnsrr
       placement:
         constraints:
-          - node.role == worker
+          - node.id != {{.NodeID1}}
       restart_policy:
         condition: any
         delay: 5s
         window: 120s
     networks:
-      traefik:
-        aliases:
-          - consul.agent
+      - traefik
 
 networks:
   traefik:

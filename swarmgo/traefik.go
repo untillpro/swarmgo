@@ -24,15 +24,18 @@ import (
 )
 
 const (
-	encryptedFlag              = " --opt encrypted"
-	traefikFolderName          = "traefik/"
-	consulFolderName           = traefikFolderName + "consul/"
-	traefikComposeFileName     = traefikFolderName + "traefik-consul.yml"
-	traefikTestComposeFileName = traefikFolderName + "traefik-http.yml"
-	traefikStoreConfigFileName = traefikFolderName + "storeconfig.yml"
-	consulComposeFileName      = consulFolderName + "consul-cluster.yml"
-	consulServerConfFileName   = consulFolderName + "server/conf.json"
-	consulAgentConfFileName    = consulFolderName + "agent/conf.json"
+	encryptedFlag                 = " --opt encrypted"
+	traefikFolderName             = "traefik/"
+	consulFolderName              = traefikFolderName + "consul/"
+	traefikComposeFileName        = traefikFolderName + "traefik-consul.yml"
+	traefikTestComposeFileName    = traefikFolderName + "traefik-http.yml"
+	traefikStoreConfigFileName    = traefikFolderName + "storeconfig.yml"
+	consulOneComposeFileName      = consulFolderName + "consul-one.yml"
+	consulThreeComposeFileName    = consulFolderName + "consul-three.yml"
+	consulOneServerConfFileName   = consulFolderName + "server/conf.json"
+	consulThreeServerConfFileName = consulFolderName + "server/conf3.json"
+	consulOneAgentConfFileName    = consulFolderName + "agent/conf.json"
+	consulThreeAgentConfFileName  = consulFolderName + "agent/conf3.json"
 )
 
 type entry struct {
@@ -40,8 +43,11 @@ type entry struct {
 	node               node
 }
 
-type consul struct {
-	Bootstrap uint8
+type managerNodes struct {
+	Consul  string
+	NodeID1 string
+	NodeID2 string
+	NodeID3 string
 }
 
 var encrypted = ""
@@ -110,33 +116,47 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 			bootstrap++
 		}
 	}
-	var bootstrapConsul consul
+	var nodesForConsul managerNodes
+	nodesForConsul.Consul = clusterFile.Consul
+	var consulAgentConfFileName, consulServerConfFileName, consulComposeFileName string
+	managerIDs := sudoExecSSHCommand(host, "docker node ls -q -f role=manager", config)
+	managers := strings.Split(strings.Trim(managerIDs, "\r\n "), "\n")
 	if bootstrap >= 3 {
-		bootstrapConsul.Bootstrap = 3
+		nodesForConsul.NodeID1 = managers[0]
+		nodesForConsul.NodeID2 = managers[1]
+		nodesForConsul.NodeID3 = managers[2]
+		consulAgentConfFileName = consulThreeAgentConfFileName
+		consulServerConfFileName = consulThreeServerConfFileName
+		consulComposeFileName = consulThreeComposeFileName
 	} else {
-		bootstrapConsul.Bootstrap = 1
+		nodesForConsul.NodeID1 = managers[0]
+		consulAgentConfFileName = consulOneAgentConfFileName
+		consulServerConfFileName = consulOneServerConfFileName
+		consulComposeFileName = consulOneComposeFileName
 	}
-	gc.Info(fmt.Sprintf("Num of managers: %v, bootstrap expect: %v", bootstrap, bootstrapConsul.Bootstrap))
-	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getSourcesDir(), consulAgentConfFileName))
+	gc.Info(fmt.Sprintf("Num of managers: %v", bootstrap))
+	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulAgentConfFileName))
 	CheckErr(err)
-	consulServerConf := executeTemplateToFile(filepath.Join(getSourcesDir(), consulServerConfFileName), bootstrapConsul)
-	consulCompose := executeTemplateToFile(filepath.Join(getSourcesDir(), consulComposeFileName), clusterFile)
+	consulServerConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulServerConfFileName))
+	CheckErr(err)
+	consulCompose := executeTemplateToFile(filepath.Join(getCurrentDir(), consulComposeFileName), nodesForConsul)
 	gc.Info("Consul configs modified")
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"agent", config)
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"server", config)
 	execSSHCommand(host, "cat > ~/"+consulAgentConfFileName+" << EOF\n\n"+string(consulAgentConf)+"\nEOF", config)
-	execSSHCommand(host, "cat > ~/"+consulServerConfFileName+" << EOF\n\n"+consulServerConf.String()+"\nEOF", config)
+	execSSHCommand(host, "cat > ~/"+consulServerConfFileName+" << EOF\n\n"+string(consulServerConf)+"\nEOF", config)
 	execSSHCommand(host, "cat > ~/"+consulComposeFileName+" << EOF\n\n"+consulCompose.String()+"\nEOF", config)
 	gc.Info("Consul configs written to host")
 	sudoExecSSHCommand(host, "docker stack deploy -c "+consulComposeFileName+" traefik", config)
 	gc.Info("Consul deployed, wait for consul sync")
 	waitSuccessOrFailAfterTimer(host, "Synced node info", "Consul synced",
-		"Consul doesn't sync in five minutes, deployment stopped", "docker service logs traefik_consul_server",
+		"Consul doesn't sync in five minutes, deployment stopped", "docker service logs traefik_consul_main_server1",
 		5, config)
 }
 
 func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
 	t, err := template.ParseFiles(filePath)
+	CheckErr(err)
 	var tmplBuffer bytes.Buffer
 	err = t.Execute(&tmplBuffer, tmplExecutor)
 	CheckErr(err)
@@ -153,15 +173,11 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, co
 }
 
 func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
-	out := sudoExecSSHCommand(host, "docker node ls --format \"{{if .Self}}{{.ID}}{{end}}\"", config)
-	out = strings.Trim(out, "\n ")
-	clusterFile.CurrentNodeID = out
 	deployTraefik(clusterFile, host, traefikComposeFileName, config)
+	gc.Doing("Waiting for certs")
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
 		"docker service logs traefik_traefik", 3, config)
-	gc.Info("traefik.yml written to host")
-	sudoExecSSHCommand(host, "docker service update --constraint-rm=\"node.id == "+out+"\" traefik_traefik", config)
 	gc.Info("traefik deployed")
 }
 

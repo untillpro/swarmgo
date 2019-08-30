@@ -26,7 +26,7 @@ services:
       - "--docker.domain={{.Domain}}"
       - "--docker.watch"
       - "--consul"
-      - "--consul.endpoint=consul.server:8500"
+      - "--consul.endpoint=consul_main:8500"
       - "--consul.prefix=traefik"
       - "--maxidleconnsperhost=0"
     networks:

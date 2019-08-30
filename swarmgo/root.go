@@ -47,7 +47,6 @@ type clusterFile struct {
 	TraefikPassword      string
 	WebhookURL           string
 	GrafanaPassword      string
-	CurrentNodeID        string
 	KibanaCreds          string
 	PrometheusPassword   string
 }
