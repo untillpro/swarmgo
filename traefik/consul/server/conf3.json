@@ -3,9 +3,11 @@
   "data_dir": "/consul/data",
   "bind_addr": "{{ GetInterfaceIP \"eth0\" }}",
   "client_addr": "{{ GetInterfaceIP \"eth0\" }}",
-  "bootstrap_expect": 1,
+  "bootstrap_expect": 3,
   "server": true,
   "retry_join": [
-    "consul_main_server1"
+    "consul_main_server1",
+    "consul_main_server2",
+    "consul_main_server3"
   ]
 }
