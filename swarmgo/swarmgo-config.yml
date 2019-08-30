@@ -13,7 +13,7 @@ Cluster: {{.ClusterName}}
 # This user will be used to create ClusterUser, after that this account will be disabled
 # Password login for this user MUST be enabled
 # This user MUST be able to run "sudo" commands without password
-RootUser: untilltest
+RootUser: root
 
 # This user will be created on each node and given sudo permissions
 ClusterUser: cluster

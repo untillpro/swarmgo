@@ -36,6 +36,14 @@ Services:
 - mycluster.io/graphana
 - mycluster.io/prometheus
 
+# Developer Guide
+
+- Create `.nodes` folder to keep nodes related files
+  - This filder will be choosen automatically
+  - This folder is ignored by git
+
+
+
 # Under the Hood
 
 Networks:

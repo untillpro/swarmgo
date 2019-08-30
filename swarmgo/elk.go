@@ -10,9 +10,10 @@ package swarmgo
 
 import (
 	"fmt"
-	gc "github.com/untillpro/gochips"
 	"path/filepath"
 	"strings"
+
+	gc "github.com/untillpro/gochips"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"
@@ -56,7 +57,7 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 	}
 	gc.Info("Trying to install dos2unix")
 	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
-	curDir := getCurrentDir()
+	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
 	appliedBuffer := executeTemplateToFile(eLKComposeFileName, clusterFile)
 	execSSHCommand(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
@@ -71,7 +72,7 @@ func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entr
 }
 
 func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
-	nodesFromYml := getNodesFromYml(getCurrentDir())
+	nodesFromYml := getNodesFromYml(getWorkingDir())
 	doneChannel := make(chan interface{})
 	for _, value := range nodesFromYml {
 		go func(node node) {

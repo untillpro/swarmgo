@@ -47,7 +47,7 @@ type clusterFile struct {
 	TraefikPassword      string
 	WebhookURL           string
 	GrafanaPassword      string
-	CurrentNodeId        string
+	CurrentNodeID        string
 	KibanaCreds          string
 	PrometheusPassword   string
 }
@@ -64,7 +64,6 @@ var rootCmd = &cobra.Command{
 func Execute() {
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
-
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(addNodeCmd)
 	rootCmd.AddCommand(dockerCmd)

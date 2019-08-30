@@ -16,6 +16,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -69,7 +70,7 @@ func doingWithPrefix(prefix, str string) {
 }
 
 func redirectLogs() *os.File {
-	parent := filepath.Join(getCurrentDir(), "logs")
+	parent := filepath.Join(getSourcesDir(), "logs")
 	err := os.MkdirAll(parent, os.ModePerm)
 	CheckErr(err)
 	f, err := os.OpenFile(filepath.Join(parent, "log.log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
@@ -95,7 +96,11 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	gc.Verbose("SSH", host+", "+cmd)
+	if strings.HasPrefix(cmd, "!") {
+		cmd = cmd[1:]
+	} else {
+		gc.Verbose("SSH", host+", "+cmd)
+	}
 	conn, err := ssh.Dial("tcp", host+":22", config)
 	if err != nil {
 		gc.Verbose("SSH:Dial failed", "")
@@ -154,11 +159,13 @@ func containsNode(slice []node, find node) bool {
 	return false
 }
 
-func readFileIfExists(fileName, errorMessage string) []byte {
-	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), fileName))
+func readWorkingFileIfExists(fileName, errorMessage string) []byte {
+	nodesFileEntry, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), fileName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			gc.ExitIfError(err, errorMessage)
+			gc.Error(err)
+			gc.Error(errorMessage)
+			os.Exit(1)
 		}
 	}
 	return nodesFileEntry
@@ -244,7 +251,7 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 }
 
 func unmarshalClusterYml() *clusterFile {
-	clusterFileEntry := readFileIfExists(swarmgoConfigFileName, "You should create swarmgo-config.yml")
+	clusterFileEntry := readWorkingFileIfExists(swarmgoConfigFileName, "You should create swarmgo-config.yml")
 	clusterFileStruct := clusterFile{}
 	err := yaml.Unmarshal(clusterFileEntry, &clusterFileStruct)
 	CheckErr(err)
@@ -283,7 +290,37 @@ func substringAfter(value string, a string) string {
 	return value[adjustedPos:]
 }
 
-func getCurrentDir() string {
+var workingDirReported bool
+
+func getWorkingDir() string {
+	src := getSourcesDir()
+	res := src
+	defer func() {
+		if !workingDirReported {
+			gc.Verbose("workingDir", res)
+			workingDirReported = true
+		}
+	}()
+	nodesFile := filepath.Join(src, nodesFileName)
+	if FileExists(nodesFile) {
+		return res
+	}
+
+	res = path.Join(src, ".nodes")
+	if FileExists(res) {
+		return res
+	}
+
+	res = path.Join(src, "nodes")
+	if FileExists(res) {
+		return res
+	}
+	err := os.MkdirAll(res, 0777)
+	CheckErr(err)
+	return res
+}
+
+func getSourcesDir() string {
 	pwd, err := os.Getwd()
 	CheckErr(err)
 	return pwd

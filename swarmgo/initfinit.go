@@ -24,7 +24,7 @@ func initCommand(cmdName string) {
 
 	n := time.Now()
 	logFileName := n.Format("20060102-150405-") + cmdName + ".txt"
-	logFolderName := filepath.Join(getCurrentDir(), "logs")
+	logFolderName := filepath.Join(getWorkingDir(), "logs")
 	gc.ExitIfError(os.MkdirAll(logFolderName, os.ModePerm), "Could not not create a folder for logs")
 
 	logFilePath := filepath.Join(logFolderName, logFileName)

@@ -62,7 +62,7 @@ var traefikCmd = &cobra.Command{
 		defer finitCommand()
 		passToKey := readKeyPassword()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
-		nodes := getNodesFromYml(getCurrentDir())
+		nodes := getNodesFromYml(getWorkingDir())
 		host := firstEntry.node.Host
 		var config = findSSHKeysAndInitConnection(passToKey, clusterFile)
 		if clusterFile.EncryptSwarmNetworks {
@@ -92,7 +92,7 @@ var traefikCmd = &cobra.Command{
 		}
 		marshaledNode, err := yaml.Marshal(&nodes)
 		CheckErr(err)
-		nodesFilePath := filepath.Join(getCurrentDir(), nodesFileName)
+		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
 		gc.Info("Nodes written in file")
 		CheckErr(err)
@@ -102,7 +102,7 @@ var traefikCmd = &cobra.Command{
 func storeTraefikConfigToConsul(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
 	gc.Info("Traefik store config started")
 	execSSHCommand(host, "mkdir -p ~/"+traefikFolderName, config)
-	traefikStoreConfig := executeTemplateToFile(filepath.Join(getCurrentDir(), traefikStoreConfigFileName), clusterFile)
+	traefikStoreConfig := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikStoreConfigFileName), clusterFile)
 	execSSHCommand(host, "cat > ~/"+traefikStoreConfigFileName+" << EOF\n\n"+traefikStoreConfig.String()+"\nEOF", config)
 	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikStoreConfigFileName+" traefik", config)
 	gc.Info("Traefik configs stored in consul")
@@ -164,7 +164,7 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
-	tmplBuffer := executeTemplateToFile(filepath.Join(getCurrentDir(), traefikComposeName), clusterFile)
+	tmplBuffer := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
 	sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" webgateway || true", config)
 	gc.Info("webgateway networks created")
