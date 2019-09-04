@@ -135,11 +135,11 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 		consulComposeFileName = consulOneComposeFileName
 	}
 	gc.Info(fmt.Sprintf("Num of managers: %v", bootstrap))
-	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulAgentConfFileName))
+	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulAgentConfFileName))
 	CheckErr(err)
-	consulServerConf, err := ioutil.ReadFile(filepath.Join(getCurrentDir(), consulServerConfFileName))
+	consulServerConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulServerConfFileName))
 	CheckErr(err)
-	consulCompose := executeTemplateToFile(filepath.Join(getCurrentDir(), consulComposeFileName), nodesForConsul)
+	consulCompose := executeTemplateToFile(filepath.Join(getWorkingDir(), consulComposeFileName), nodesForConsul)
 	gc.Info("Consul configs modified")
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"agent", config)
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"server", config)
