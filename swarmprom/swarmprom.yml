@@ -128,7 +128,7 @@ services:
     networks:
       - webgateway
     environment:
-      - NODE_ID={{"{{"}}.Node.ID{{"}}"}}
+      - NODE_ID={{"{{"}}.Node.Hostname{{"}}"}}
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
