@@ -8,7 +8,7 @@
 
 package main
 
-mport "github.com/untillpro/swarmgo/swarmgo"
+import "github.com/untillpro/swarmgo/swarmgo"
 
 func main() {
 	swarmgo.Execute()
