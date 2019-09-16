@@ -114,7 +114,7 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 	defer session.Close()
 	bs, err := session.CombinedOutput(cmd)
 	if err != nil {
-		gc.Verbose("SSH:session.CombinedOutput failed", "")
+		gc.Verbose("SSH:session.CombinedOutput failed", string(bs))
 		return string(bs), err
 	}
 	return string(bs), nil
