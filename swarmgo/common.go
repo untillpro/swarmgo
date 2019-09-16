@@ -178,6 +178,11 @@ func waitUserInput() string {
 	return strings.Trim(input, "\n\r ")
 }
 
+func queryUserInput(prompt string) string {
+	fmt.Print(prompt)
+	return waitUserInput()
+}
+
 func findSSHKeys(clusterFile *clusterFile) (string, string) {
 	var publicKeyFile string
 	var privateKeyFile string
