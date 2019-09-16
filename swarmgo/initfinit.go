@@ -13,10 +13,21 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
 )
 
 var logFile *os.File
+
+type LoggedRunnable func(args []string)
+
+func loggedCmd(f LoggedRunnable) func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, args []string) {
+		initCommand(cmd.Name())
+		f(args)
+		finitCommand()
+	}
+}
 
 func initCommand(cmdName string) {
 	gc.IsVerbose = true
