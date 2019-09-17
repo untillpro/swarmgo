@@ -31,7 +31,7 @@ var mode bool
 
 // swarmCmd represents the swarm command
 var swarmCmd = &cobra.Command{
-	Use:   "swarm -m <Alias1> <Alias2> or swarm without params(you should create one manager before do that)",
+	Use:   "swarm -m <Alias1> <Alias2> or swarm without params (you should create one manager before doing that)",
 	Short: "swarm -m installs managers on given node, swarm installs workers",
 	Long: `swarm with -m installs swarm manager nodes on given Aliases, swarm installs swarm workers on other nodes in
  cluster`,
