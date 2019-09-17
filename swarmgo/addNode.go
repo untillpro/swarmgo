@@ -137,7 +137,7 @@ func add(cmd *cobra.Command, args []string) {
 		}(value)
 	}
 	errMsgs := make([]string, 0, len(args))
-	for range args {
+	for range nodesToAdd {
 		nodeFromChannel := <-nodesChannel
 		switch nodeFromChannel.(type) {
 		case node:
