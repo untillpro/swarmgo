@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -91,11 +90,6 @@ func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 	return string(bs)
 }
 
-type singleWriter struct {
-	b  bytes.Buffer
-	mu sync.Mutex
-}
-
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
 	if strings.HasPrefix(cmd, "!") {
 		cmd = cmd[1:]
@@ -122,7 +116,7 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 		if stdErrStr != "" {
 			err = errors.New(err.Error() + " / " + stdErrStr)
 		}
-		gc.Verbose("SSH:session.CombinedOutput failed", stdErrStr, string(bs))
+		gc.Verbose("SSH:session.Output failed", stdErrStr, string(bs))
 		return string(bs), err
 	}
 	return string(bs), nil

@@ -33,9 +33,7 @@ var dockerCmd = &cobra.Command{
 	Use:   "docker <arg1 arg2...> or not",
 	Short: "Install docker",
 	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
-	Run: func(cmd *cobra.Command, args []string) {
-		initCommand("docker")
-		defer finitCommand()
+	Run: loggedCmd(func(args []string) {
 		clusterFile := unmarshalClusterYml()
 		nodesFromYaml := getNodesFromYml(getWorkingDir())
 		if len(nodesFromYaml) == 0 {
@@ -49,9 +47,7 @@ var dockerCmd = &cobra.Command{
 		if len(args) != 0 {
 			for _, arg := range args {
 				val, ok := aliasesAndNodes[arg]
-				if !ok {
-					gc.Fatal(val, "doesn't present in nodes.yml")
-				}
+				gc.ExitIfFalse(ok, "missing in nodes.yml")
 				nodesForDocker = append(nodesForDocker, val)
 			}
 		} else {
@@ -94,7 +90,7 @@ var dockerCmd = &cobra.Command{
 		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
 		gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
 		gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install docker on some node(s)")
-	},
+	}),
 }
 
 func installDocker(node node, dockerVersions map[string]map[string]string, config *ssh.ClientConfig) (node, error) {
