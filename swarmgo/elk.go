@@ -100,8 +100,6 @@ func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
 
 func hashPassword(password string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	if err != nil {
-		panic(err)
-	}
+	gc.ExitIfError(err)
 	return string(hash)
 }

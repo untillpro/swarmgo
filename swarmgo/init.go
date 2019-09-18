@@ -14,10 +14,8 @@ var initCmd = &cobra.Command{
 	Long:  `Initialize swarmgo-config.yml with list of used in project technologies and versions`,
 	Run: loggedCmd(func(args []string) {
 		clusterFilePath := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
-		if FileExists(clusterFilePath) {
-			gc.Info("swarmgo-config.yml already created")
-			return
-		}
+		gc.ExitIfFalse(!FileExists(clusterFilePath), "swarmgo-config.yml already created")
+
 		defaultClusterFileRelativePath := filepath.Join("swarmgo", swarmgoConfigFileName)
 		gc.ExitIfFalse(FileExists(defaultClusterFileRelativePath), "You should clone swarmgo-config.yml from repo!")
 
@@ -27,7 +25,7 @@ var initCmd = &cobra.Command{
 		}
 
 		configEntry := executeTemplateToFile(defaultClusterFileRelativePath, clusterFile)
-		CheckErr(ioutil.WriteFile(clusterFilePath, configEntry.Bytes(), 0644))
-		gc.Info("swarmgo-config.yml created in " + getWorkingDir() + " folder, perhaps you will have to modify some variables")
+		gc.ExitIfError(ioutil.WriteFile(clusterFilePath, configEntry.Bytes(), 0644))
+		gc.Info("Done: swarmgo-config.yml created in " + getWorkingDir() + " folder, perhaps you will have to modify some variables")
 	}),
 }

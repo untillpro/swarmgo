@@ -91,11 +91,11 @@ var traefikCmd = &cobra.Command{
 			}
 		}
 		marshaledNode, err := yaml.Marshal(&nodes)
-		CheckErr(err)
+		gc.ExitIfError(err)
 		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
 		gc.Info("Nodes written in file")
-		CheckErr(err)
+		gc.ExitIfError(err)
 	},
 }
 
@@ -136,9 +136,9 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 	}
 	gc.Info(fmt.Sprintf("Num of managers: %v", bootstrap))
 	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulAgentConfFileName))
-	CheckErr(err)
+	gc.ExitIfError(err)
 	consulServerConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulServerConfFileName))
-	CheckErr(err)
+	gc.ExitIfError(err)
 	consulCompose := executeTemplateToFile(filepath.Join(getWorkingDir(), consulComposeFileName), nodesForConsul)
 	gc.Info("Consul configs modified")
 	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"agent", config)
@@ -156,10 +156,9 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 
 func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
 	t, err := template.ParseFiles(filePath)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	var tmplBuffer bytes.Buffer
-	err = t.Execute(&tmplBuffer, tmplExecutor)
-	CheckErr(err)
+	gc.ExitIfError(t.Execute(&tmplBuffer, tmplExecutor))
 	return &tmplBuffer
 }
 

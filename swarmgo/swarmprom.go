@@ -77,13 +77,12 @@ func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *ent
 	gc.Info("Trying to deploy swarmprom")
 	sudoExecSSHCommand(host, "docker stack deploy -c "+swarmpromComposeFileName+" prom", config)
 	gc.Info("Swarmprom deployed")
-	err := postTestMessageToAlertmanager(clusterFile.WebhookURL, clusterFile.ChannelName)
-	CheckErr(err)
+	gc.ExitIfError(postTestMessageToAlertmanager(clusterFile.WebhookURL, clusterFile.ChannelName))
 }
 
 func copyToHost(forCopy *infoForCopy, src string) {
 	info, err := os.Lstat(src)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	if info.IsDir() {
 		copyDirToHost(src, forCopy)
 	} else {
@@ -95,7 +94,7 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath,
 		filepath.ToSlash(getSourcesDir())+"/"), forCopy.config)
 	dirContent, err := ioutil.ReadDir(dirPath)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	for _, dirEntry := range dirContent {
 		src := filepath.ToSlash(filepath.Join(dirPath, dirEntry.Name()))
 		copyToHost(forCopy, src)
@@ -109,7 +108,7 @@ func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)
 	sudoExecSSHCommand(host, "chmod 777 "+relativePath, forCopy.config)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	gc.Info(relativePath, "copied on host")
 }
 

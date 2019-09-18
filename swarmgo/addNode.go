@@ -153,8 +153,8 @@ func add(cmd *cobra.Command, args []string) {
 	marshaledNode, err := yaml.Marshal(&nodesFromYaml)
 	gc.ExitIfError(err)
 	nodesFile := filepath.Join(getWorkingDir(), nodesFileName)
-	err = ioutil.WriteFile(nodesFile, marshaledNode, 0600)
-	gc.ExitIfError(err)
+	gc.ExitIfError(ioutil.WriteFile(nodesFile, marshaledNode, 0600))
+	gc.ExitIfFalse(len(errMsgs) == 0, "Failed to add some node(s)")
 }
 
 // addNodeCmd represents the addNode command
