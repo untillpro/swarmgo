@@ -90,10 +90,10 @@ var dockerCmd = &cobra.Command{
 			nodes = append(nodes, val)
 		}
 		marshaledNode, err := yaml.Marshal(&nodes)
-		CheckErr(err)
+		gc.ExitIfError(err)
 		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
-		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
-		CheckErr(err)
+		gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
+		gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install docker on some node(s)")
 	},
 }
 

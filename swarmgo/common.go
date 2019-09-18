@@ -11,6 +11,7 @@ package swarmgo
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -33,7 +35,7 @@ import (
 func readPasswordPrompt(prompt string) string {
 	fmt.Print(prompt + ":")
 	password, err := terminal.ReadPassword(int(syscall.Stdin))
-	CheckErr(err)
+	gc.ExitIfError(err)
 	fmt.Println("")
 	return string(password)
 }
@@ -44,21 +46,18 @@ func readKeyPassword() string {
 
 func appendChildToExecutablePath(child string) string {
 	current, err := os.Executable()
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return filepath.Join(filepath.Dir(current), child)
 }
 
 // FileExists s.e.
 func FileExists(clusterFile string) bool {
 	_, err := os.Stat(clusterFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-		panic(err)
-	} else {
-		return true
+	if err != nil && os.IsNotExist(err) {
+		return false
 	}
+	gc.ExitIfError(err)
+	return true
 }
 
 func logWithPrefix(prefix, str string) {
@@ -71,10 +70,9 @@ func doingWithPrefix(prefix, str string) {
 
 func redirectLogs() *os.File {
 	parent := filepath.Join(getSourcesDir(), "logs")
-	err := os.MkdirAll(parent, os.ModePerm)
-	CheckErr(err)
+	gc.ExitIfError(os.MkdirAll(parent, os.ModePerm))
 	f, err := os.OpenFile(filepath.Join(parent, "log.log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	log.SetOutput(f)
 	return f
 }
@@ -89,10 +87,13 @@ func sudoExecSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) 
 
 func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
 	bs, err := execSSHCommandWithoutPanic(host, cmd, config)
-	if err != nil {
-		panic(string(bs))
-	}
+	gc.ExitIfError(err, string(bs))
 	return string(bs)
+}
+
+type singleWriter struct {
+	b  bytes.Buffer
+	mu sync.Mutex
 }
 
 func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
@@ -112,9 +113,16 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 		return "", err
 	}
 	defer session.Close()
-	bs, err := session.CombinedOutput(cmd)
+	var bErr bytes.Buffer
+	session.Stderr = &bErr
+
+	bs, err := session.Output(cmd)
 	if err != nil {
-		gc.Verbose("SSH:session.CombinedOutput failed", string(bs))
+		stdErrStr := bErr.String()
+		if stdErrStr != "" {
+			err = errors.New(err.Error() + " / " + stdErrStr)
+		}
+		gc.Verbose("SSH:session.CombinedOutput failed", stdErrStr, string(bs))
 		return string(bs), err
 	}
 	return string(bs), nil
@@ -122,17 +130,17 @@ func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (str
 
 func getSSHSession(host string, config *ssh.ClientConfig) *ssh.Session {
 	conn, err := ssh.Dial("tcp", host+":22", config)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	session, err := conn.NewSession()
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return session
 }
 
 func initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, password string) *ssh.ClientConfig {
 	pemBytes, err := ioutil.ReadFile(privateKeyFile)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	signer, err := ssh.ParsePrivateKeyWithPassphrase(pemBytes, []byte(password))
-	CheckErr(err)
+	gc.ExitIfError(err)
 	sshConfig := &ssh.ClientConfig{
 		User:            userName,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -174,7 +182,7 @@ func readWorkingFileIfExists(fileName, errorMessage string) []byte {
 func waitUserInput() string {
 	buf := bufio.NewReader(os.Stdin)
 	input, err := buf.ReadString('\n')
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return strings.Trim(input, "\n\r ")
 }
 
@@ -193,7 +201,7 @@ func findSSHKeys(clusterFile *clusterFile) (string, string) {
 		publicKeyFile = ".ssh/" + clusterFile.ClusterName + ".pub"
 		privateKeyFile = ".ssh/" + clusterFile.ClusterName
 		home, err := homedir.Dir()
-		CheckErr(err)
+		gc.ExitIfError(err)
 		if len(home) > 0 {
 			publicKeyFile = filepath.Join(home, publicKeyFile)
 			privateKeyFile = filepath.Join(home, privateKeyFile)
@@ -207,26 +215,19 @@ func findSSHKeys(clusterFile *clusterFile) (string, string) {
 
 func convertStringToInt(s string) int {
 	convertExit, err := strconv.Atoi(strings.TrimSuffix(s, "\n"))
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return convertExit
-}
-
-//CheckErr throws panic if error != nil
-func CheckErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 func getNodesFromYml(parentFolderName string) []node {
 	nodesFileName := filepath.Join(parentFolderName, nodesFileName)
 	nodesFile, err := os.OpenFile(nodesFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	nodesFromYaml := make([]node, 0, 5)
 	fileEntry, err := ioutil.ReadAll(nodesFile)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	err = yaml.Unmarshal(fileEntry, &nodesFromYaml)
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return nodesFromYaml
 }
 
@@ -258,16 +259,13 @@ func inputFuncForHosts(hostsWithNumbers map[int]string) string {
 func unmarshalClusterYml() *clusterFile {
 	clusterFileEntry := readWorkingFileIfExists(swarmgoConfigFileName, "You should create swarmgo-config.yml")
 	clusterFileStruct := clusterFile{}
-	err := yaml.Unmarshal(clusterFileEntry, &clusterFileStruct)
-	CheckErr(err)
+	gc.ExitIfError(yaml.Unmarshal(clusterFileEntry, &clusterFileStruct))
 	return &clusterFileStruct
 }
 
 func findSSHKeysAndInitConnection(passToKey string, config *clusterFile) *ssh.ClientConfig {
 	_, privateKeyFile := findSSHKeys(config)
-	if !FileExists(privateKeyFile) {
-		gc.Fatal("Can't find private key to connect to remote server!")
-	}
+	gc.ExitIfFalse(FileExists(privateKeyFile), "Can't find private key to connect to remote server!")
 	return initSSHConnectionConfigWithPublicKeys(config.ClusterUserName, privateKeyFile, passToKey)
 }
 
@@ -320,14 +318,13 @@ func getWorkingDir() string {
 	if FileExists(res) {
 		return res
 	}
-	err := os.MkdirAll(res, 0777)
-	CheckErr(err)
+	gc.ExitIfError(os.MkdirAll(res, 0777))
 	return res
 }
 
 func getSourcesDir() string {
 	pwd, err := os.Getwd()
-	CheckErr(err)
+	gc.ExitIfError(err)
 	return pwd
 }
 
