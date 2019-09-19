@@ -9,11 +9,10 @@
 package swarmgo
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
@@ -28,17 +27,19 @@ type nodeAndError struct {
 	err                   error
 }
 
+var forceUpgradeDocker bool
+
 // dockerCmd represents the docker command
 var dockerCmd = &cobra.Command{
 	Use:   "docker <arg1 arg2...> or not",
-	Short: "Install docker",
-	Long:  `Downloads and installs docker specific version. Version takes from Clusterfile`,
+	Short: "Install docker. Use -u flag to upgrade",
+	Long:  `Downloads and installs latest version of docker`,
 	Run: loggedCmd(func(args []string) {
+
 		clusterFile := unmarshalClusterYml()
 		nodesFromYaml := getNodesFromYml(getWorkingDir())
-		if len(nodesFromYaml) == 0 {
-			gc.Fatal("Can't find nodes from nodes.yml. Add some nodes first!")
-		}
+		gc.ExitIfFalse(len(nodesFromYaml) > 0, "Can't find nodes from nodes.yml. Add some nodes first!")
+
 		aliasesAndNodes := make(map[string]node)
 		for _, node := range nodesFromYaml {
 			aliasesAndNodes[node.Alias] = node
@@ -58,7 +59,7 @@ var dockerCmd = &cobra.Command{
 		for _, currentNode := range nodesForDocker {
 			go func(node node) {
 				config := findSSHKeysAndInitConnection(passToKey, clusterFile)
-				nodeFromGoroutine, err := installDocker(node, clusterFile.Docker, config)
+				nodeFromGoroutine, err := installDocker(node, config)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
@@ -93,26 +94,23 @@ var dockerCmd = &cobra.Command{
 	}),
 }
 
-func installDocker(node node, dockerVersions map[string]map[string]string, config *ssh.ClientConfig) (node, error) {
+func installDocker(node node, config *ssh.ClientConfig) (node, error) {
 	host := node.Host
-	oSName, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -i", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
+
+	//check that already installed, use "force" flag to force update
+	version, err := getDockerVersion(host, config)
+	if err == nil && version != "" {
+		if !forceUpgradeDocker {
+			logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed! Use -u flag to update docker to the latest version", version))
+			node.DockerVersion = version
+			return node, err
+		} else {
+			logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed and will be upgraded to the latest version", version))
+		}
+	} else {
+		logWithPrefix(host, "Couldn't find docker, installing latest version")
 	}
-	oSVersion, err := sudoExecSSHCommandWithoutPanic(host, "lsb_release -r", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
-	oSName = strings.Trim(substringAfter(oSName, "Distributor ID:"), " \t\n")
-	oSVersion = strings.Trim(substringAfter(oSVersion, "Release:"), " \t\n")
-	version := dockerVersions[oSName][oSVersion]
-	if checkDockerInstallation(host, version, config) || version == node.DockerVersion {
-		logWithPrefix(host, "Docker version "+version+" already installed!")
-		node.DockerVersion = version
-		return node, nil
-	}
+
 	logWithPrefix(host, "Updating apt-get...")
 	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get update", config)
 	if err != nil {
@@ -145,37 +143,41 @@ func installDocker(node node, dockerVersions map[string]map[string]string, confi
 		node.DockerVersion = ""
 		return node, err
 	}
-	logWithPrefix(host, "Trying to install "+docker+" version "+version+"...")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get -y install "+docker+"="+version, config)
+	logWithPrefix(host, "Trying to install the latest version of "+docker)
+	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get -y install "+docker, config)
 	if err != nil {
 		node.DockerVersion = ""
 		return node, err
 	}
 	logWithPrefix(host, "Checking installation...")
-	if checkDockerInstallation(host, version, config) {
-		logWithPrefix(host, "Docker successfully installed")
-		node.DockerVersion = version
-		return node, nil
+
+	version, err = getDockerVersion(host, config)
+	if err != nil {
+		node.DockerVersion = ""
+		return node, err
 	}
-	logWithPrefix(host, "Can't install docker")
-	node.DockerVersion = ""
+
+	logWithPrefix(host, "Docker successfully installed")
+	node.DockerVersion = version
+
 	return node, nil
 }
 
-func checkDockerInstallation(host, version string, config *ssh.ClientConfig) bool {
-	exit, _ := sudoExecSSHCommandWithoutPanic(host, "docker -v", config)
+func getDockerVersion(host string, config *ssh.ClientConfig) (string, error) {
+	stdout, err := sudoExecSSHCommandWithoutPanic(host, "docker -v", config)
 
-	re := regexp.MustCompile("(?:.*:)?([^~]*)")
-	submatch := re.FindStringSubmatch(version)
-	var trimmedVersion string
-	if len(submatch) > 1 {
-		trimmedVersion = submatch[1]
-	} else {
-		trimmedVersion = ""
+	if err != nil {
+		return "", err
 	}
-	gc.Verbose("docker -v", exit)
-	gc.Verbose("version", version)
-	gc.Verbose("trimmedVersion", trimmedVersion)
 
-	return strings.Contains(exit, trimmedVersion)
+	version := ParseDockerVersion(stdout)
+
+	if version == "" {
+		return "", errors.New("Unable to retrieve docker version from output: " + stdout)
+	}
+
+	gc.Verbose("docker -v", stdout)
+	gc.Verbose("version", version)
+
+	return version, nil
 }

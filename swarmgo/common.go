@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -331,4 +332,17 @@ func generateRandomString(length int) string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func ParseDockerVersion(stdout string) string {
+
+	re := regexp.MustCompile("(\\d+\\.\\d+(\\.\\d+)?)")
+
+	submatch := re.FindStringSubmatch(stdout)
+
+	if len(submatch) > 1 {
+		return submatch[1]
+	} else {
+		return ""
+	}
 }
