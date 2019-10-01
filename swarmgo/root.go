@@ -63,8 +63,17 @@ var rootCmd = &cobra.Command{
 func Execute() {
 
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
+
 	rootCmd.AddCommand(initCmd)
+
+	rootCmd.AddCommand(keysCmd)
+	keysCmd.Flags().StringVarP(&privateKeyArg, "private", "p", "", "Private key path")
+	keysCmd.Flags().StringVarP(&publicKeyArg, "public", "u", "", "Public key path")
+
+	rootCmd.AddCommand(agentCmd)
+
 	rootCmd.AddCommand(addNodeCmd)
+
 	rootCmd.AddCommand(dockerCmd)
 	dockerCmd.Flags().BoolVarP(&forceUpgradeDocker, "Force upgrade", "u", false, "Upgrade docker to the latest version, if already installed")
 
@@ -74,6 +83,7 @@ func Execute() {
 	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
 
 	rootCmd.AddCommand(swarmpromCmd)
+
 	rootCmd.AddCommand(traefikCmd)
 
 	if err := rootCmd.Execute(); err != nil {

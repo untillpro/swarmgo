@@ -17,9 +17,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/tmc/scp"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -29,53 +27,46 @@ const (
 )
 
 type infoForCopy struct {
-	nodeEntry   *entry
-	config      *ssh.ClientConfig
-	clusterFile *clusterFile
+	host   string
+	client *SSHClient
 }
 
 var swarmpromCmd = &cobra.Command{
 	Use:   "swarmprom",
 	Short: "Create starter kit for swarm monitoring",
 	Long:  `Deploys Prometheus, WebhookURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
-	Run: func(cmd *cobra.Command, args []string) {
-		initCommand("swarmprom")
-		defer finitCommand()
-
-		passToKey := readKeyPassword()
+	Run: loggedCmd(func(args []string) {
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		if !firstEntry.node.Traefik {
 			gc.Fatal("Need to deploy traefik before swarmprom deploy")
 		}
-		deploySwarmprom(passToKey, clusterFile, firstEntry)
-	},
+		deploySwarmprom(clusterFile, firstEntry)
+	}),
 }
 
-func deploySwarmprom(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
+func deploySwarmprom(clusterFile *clusterFile, firstEntry *entry) {
+	client := getSSHClient(clusterFile)
 	clusterFile.GrafanaPassword = readPasswordPrompt("Grafana admin user password")
 	gc.Info("Enter webhook URL for slack channel", clusterFile.ChannelName)
 	clusterFile.WebhookURL = waitUserInput()
 	//TODO don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
-	config := findSSHKeysAndInitConnection(passToKey, clusterFile)
 	forCopy := infoForCopy{
-		firstEntry,
-		config,
-		clusterFile,
+		host, client,
 	}
 	gc.Info("Trying to install dos2unix")
-	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
+	client.ExecOrExit(host, "sudo apt-get install dos2unix")
 	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, swarmpromFolder)))
 	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
 	for _, fileToApplyTemplate := range filesToApplyTemplate {
 		appliedBuffer := executeTemplateToFile(fileToApplyTemplate, clusterFile)
-		execSSHCommand(host, "cat > ~/"+fileToApplyTemplate+" << EOF\n\n"+
-			appliedBuffer.String()+"\nEOF", config)
+		client.ExecOrExit(host, "cat > ~/"+fileToApplyTemplate+" << EOF\n\n"+
+			appliedBuffer.String()+"\nEOF")
 		gc.Info(fileToApplyTemplate, "applied by template")
 	}
 	gc.Info("Trying to deploy swarmprom")
-	sudoExecSSHCommand(host, "docker stack deploy -c "+swarmpromComposeFileName+" prom", config)
+	client.ExecOrExit(host, "sudo docker stack deploy -c "+swarmpromComposeFileName+" prom")
 	gc.Info("Swarmprom deployed")
 	gc.ExitIfError(postTestMessageToAlertmanager(clusterFile.WebhookURL, clusterFile.ChannelName))
 }
@@ -91,8 +82,8 @@ func copyToHost(forCopy *infoForCopy, src string) {
 }
 
 func copyDirToHost(dirPath string, forCopy *infoForCopy) {
-	execSSHCommand(forCopy.nodeEntry.node.Host, "mkdir -p "+substringAfter(dirPath,
-		filepath.ToSlash(getSourcesDir())+"/"), forCopy.config)
+	forCopy.client.ExecOrExit(forCopy.host, "mkdir -p "+substringAfter(dirPath,
+		filepath.ToSlash(getSourcesDir())+"/"))
 	dirContent, err := ioutil.ReadDir(dirPath)
 	gc.ExitIfError(err)
 	for _, dirEntry := range dirContent {
@@ -102,12 +93,12 @@ func copyDirToHost(dirPath string, forCopy *infoForCopy) {
 }
 
 func copyFileToHost(filePath string, forCopy *infoForCopy) {
-	host := forCopy.nodeEntry.node.Host
 	relativePath := substringAfter(filePath, filepath.ToSlash(getSourcesDir())+"/")
-	err := scp.CopyPath(filePath, relativePath, getSSHSession(host, forCopy.config))
-	sudoExecSSHCommand(forCopy.nodeEntry.node.Host, "dos2unix "+relativePath, forCopy.config)
-	sudoExecSSHCommand(host, "chown root:root "+relativePath, forCopy.config)
-	sudoExecSSHCommand(host, "chmod 777 "+relativePath, forCopy.config)
+	err := forCopy.client.CopyPath(forCopy.host, filePath, relativePath)
+	gc.ExitIfError(err)
+	forCopy.client.ExecOrExit(forCopy.host, "sudo dos2unix "+relativePath)
+	forCopy.client.ExecOrExit(forCopy.host, "sudo chown root:root "+relativePath)
+	forCopy.client.ExecOrExit(forCopy.host, "sudo chmod 777 "+relativePath)
 	gc.ExitIfError(err)
 	gc.Info(relativePath, "copied on host")
 }

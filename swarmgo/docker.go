@@ -16,7 +16,6 @@ import (
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
@@ -36,6 +35,7 @@ var dockerCmd = &cobra.Command{
 	Long:  `Downloads and installs latest version of docker`,
 	Run: loggedCmd(func(args []string) {
 
+		checkSSHAgent()
 		clusterFile := unmarshalClusterYml()
 		nodesFromYaml := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesFromYaml) > 0, "Can't find nodes from nodes.yml. Add some nodes first!")
@@ -54,12 +54,10 @@ var dockerCmd = &cobra.Command{
 		} else {
 			nodesForDocker = nodesFromYaml
 		}
-		passToKey := readKeyPassword()
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range nodesForDocker {
 			go func(node node) {
-				config := findSSHKeysAndInitConnection(passToKey, clusterFile)
-				nodeFromGoroutine, err := installDocker(node, config)
+				nodeFromGoroutine, err := installDocker(node, getSSHClient(clusterFile))
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
@@ -94,64 +92,60 @@ var dockerCmd = &cobra.Command{
 	}),
 }
 
-func installDocker(node node, config *ssh.ClientConfig) (node, error) {
+func installDocker(node node, client *SSHClient) (node, error) {
 	host := node.Host
 
 	//check that already installed, use "force" flag to force update
-	version, err := getDockerVersion(host, config)
+	version, err := getDockerVersion(host, client)
 	if err == nil && version != "" {
 		if !forceUpgradeDocker {
 			logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed! Use -u flag to update docker to the latest version", version))
 			node.DockerVersion = version
 			return node, err
-		} else {
-			logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed and will be upgraded to the latest version", version))
 		}
+
+		logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed and will be upgraded to the latest version", version))
+
 	} else {
 		logWithPrefix(host, "Couldn't find docker, installing latest version")
 	}
 
-	logWithPrefix(host, "Updating apt-get...")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get update", config)
+	commands := []SSHCommand{
+		SSHCommand{
+			cmd:   "sudo apt-get update",
+			title: "Updating apt-get...",
+		},
+		SSHCommand{
+			cmd:   "sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common",
+			title: "Installing packages to allow apt to use a repository over HTTPS...",
+		},
+		SSHCommand{
+			cmd:   "sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+			title: "Add Docker’s official GPG key",
+		},
+		SSHCommand{
+			cmd:   "sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+			title: "Adding repository",
+		},
+		SSHCommand{
+			cmd:   "sudo apt-get update",
+			title: "Updating apt-get...",
+		},
+		SSHCommand{
+			cmd:   "sudo apt-get -y install " + docker,
+			title: "Trying to install the latest version of " + docker,
+		},
+	}
+
+	err = sshKeyAuthCmds(host, client, commands)
 	if err != nil {
 		node.DockerVersion = ""
 		return node, err
 	}
-	logWithPrefix(host, "Installing packages to allow apt to use a repository over HTTPS...")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get -y install apt-transport-https ca-certificates curl "+
-		"software-properties-common", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
-	logWithPrefix(host, "Add Docker’s official GPG key")
-	_, err = execSSHCommandWithoutPanic(host, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
-	logWithPrefix(host, "Adding repository")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu "+
-		"$(lsb_release -cs) stable\"", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
-	logWithPrefix(host, "Updating apt-get...")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get update", config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
-	logWithPrefix(host, "Trying to install the latest version of "+docker)
-	_, err = sudoExecSSHCommandWithoutPanic(host, "apt-get -y install "+docker, config)
-	if err != nil {
-		node.DockerVersion = ""
-		return node, err
-	}
+
 	logWithPrefix(host, "Checking installation...")
 
-	version, err = getDockerVersion(host, config)
+	version, err = getDockerVersion(host, client)
 	if err != nil {
 		node.DockerVersion = ""
 		return node, err
@@ -163,8 +157,8 @@ func installDocker(node node, config *ssh.ClientConfig) (node, error) {
 	return node, nil
 }
 
-func getDockerVersion(host string, config *ssh.ClientConfig) (string, error) {
-	stdout, err := sudoExecSSHCommandWithoutPanic(host, "docker -v", config)
+func getDockerVersion(host string, client *SSHClient) (string, error) {
+	stdout, err := client.Exec(host, "docker -v")
 
 	if err != nil {
 		return "", err

@@ -16,15 +16,13 @@ import (
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	worker                = "worker"
-	manager               = "manager"
-	leader                = "leader"
-	swarmgoConfigFileName = "swarmgo-config.yml"
+	worker  = "worker"
+	manager = "manager"
+	leader  = "leader"
 )
 
 var mode bool
@@ -38,6 +36,7 @@ var swarmCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initCommand("swarm")
 		defer finitCommand()
+		checkSSHAgent()
 		clusterFile := unmarshalClusterYml()
 		// TODO mode ???
 		if mode && len(args) == 0 {
@@ -55,7 +54,6 @@ var swarmCmd = &cobra.Command{
 			gc.ExitIfFalse(mode, "Use `-manager` flag to init swarm")
 			gc.ExitIfFalse(len(args) > 0, "Need to pass at least one alias to init swarm")
 		}
-		passToKey := readKeyPassword()
 		nodesWithoutSwarm := make([]node, 0, len(nodesFromYml))
 		for _, nodeFromYml := range nodesFromYml {
 			if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||
@@ -76,21 +74,21 @@ var swarmCmd = &cobra.Command{
 
 		var nodeVar node
 		if clusterLeaderNode == (node{}) {
-			nodeVar, nodesWithoutSwarm = initSwarm(nodesWithoutSwarm, args, passToKey,
+			nodeVar, nodesWithoutSwarm = initSwarm(nodesWithoutSwarm, args,
 				clusterFile)
 			nodeHostAndNode[nodeVar.Host] = nodeVar
 			clusterLeaderNode = nodeVar
 		}
 		var channelForNodes = make(chan nodeAndError)
 		for _, currentNode := range nodesWithoutSwarm {
-			go func(nodeVar node, passToKey string) {
-				nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, passToKey, clusterFile)
+			go func(nodeVar node) {
+				nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, clusterFile)
 				nodeFromFunc := nodeAndError{
 					nodeFromGoroutine,
 					err,
 				}
 				channelForNodes <- nodeFromFunc
-			}(currentNode, passToKey)
+			}(currentNode)
 		}
 		errMsgs := make([]string, 0, len(args))
 		for _, key := range nodesWithoutSwarm {
@@ -124,14 +122,14 @@ var swarmCmd = &cobra.Command{
 	},
 }
 
-func getToken(mode, host string, config *ssh.ClientConfig) string {
-	output := sudoExecSSHCommand(host, "docker swarm join-token "+mode, config)
-	return strings.Trim(substringAfterIncludeValue(output, "docker swarm join"), "\n ")
+func getToken(mode, host string, client *SSHClient) (string, error) {
+	output, err := client.Exec(host, "$sudo docker swarm join-token "+mode) // "$" prefix masks output
+	return strings.Trim(substringAfterIncludeValue(output, "docker swarm join"), "\n "), err
 }
 
-func reloadUfwAndDocker(host string, config *ssh.ClientConfig) error {
+func reloadUfwAndDocker(host string, client *SSHClient) error {
 	gc.Info("Restarting ufw...")
-	_, err := sudoExecSSHCommandWithoutPanic(host, "ufw reload", config)
+	_, err := client.Exec(host, "sudo ufw reload")
 	if err != nil {
 		return err
 	}
@@ -139,20 +137,22 @@ func reloadUfwAndDocker(host string, config *ssh.ClientConfig) error {
 	return nil
 }
 
-func initSwarm(nodes []node, args []string,
-	passToKey string, file *clusterFile) (node, []node) {
+func initSwarm(nodes []node, args []string, file *clusterFile) (node, []node) {
 	var alias string
 	alias = args[0]
 	node, index := findNodeByAliasFromNodesYml(alias, nodes)
 	host := node.Host
-	config := findSSHKeysAndInitConnection(passToKey, file)
-	err := configUfwToWorkInSwarmMode(host, config)
+	client := getSSHClient(file)
+	err := configUfwToWorkInSwarmMode(host, client)
 	gc.ExitIfError(err)
 	gc.Info("Starting swarm initialization...")
-	sudoExecSSHCommand(host, "ufw allow 2377/tcp", config)
-	err = reloadUfwAndDocker(host, config)
+	_, err = client.Exec(host, "sudo ufw allow 2377/tcp")
 	gc.ExitIfError(err)
-	sudoExecSSHCommand(host, "docker swarm init --advertise-addr "+host, config)
+
+	err = reloadUfwAndDocker(host, client)
+	gc.ExitIfError(err)
+
+	_, err = client.Exec(host, "sudo docker swarm init --advertise-addr "+host)
 	nodes = append(nodes[:index], nodes[index+1:]...)
 	node.SwarmMode = leader
 	gc.Info("Swarm initialized, leader node is " + alias)
@@ -196,59 +196,73 @@ func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, []node, []no
 	return clusterLeaderHost, clusterManagerHosts, clusterWorkersHost
 }
 
-func configUfwToWorkInSwarmMode(host string, config *ssh.ClientConfig) error {
-	logWithPrefix(host, "Configuring ufw to work with swarm...")
-	_, err := sudoExecSSHCommandWithoutPanic(host, "ufw allow 22/tcp", config)
+func configUfwToWorkInSwarmMode(host string, client *SSHClient) error {
+	commands := []SSHCommand{
+		SSHCommand{
+			cmd:   "sudo ufw allow 22/tcp",
+			title: "Adding ufw rule 22/tcp",
+		},
+		SSHCommand{
+			cmd:   "sudo ufw allow 2376/tcp",
+			title: "Adding ufw rule 2376/tcp",
+		},
+		SSHCommand{
+			cmd:   "sudo ufw allow 7946/tcp",
+			title: "Adding ufw rule 7946/tcp",
+		},
+		SSHCommand{
+			cmd:   "sudo ufw allow 7946/udp",
+			title: "Adding ufw rule 7946/udp",
+		},
+		SSHCommand{
+			cmd:   "sudo ufw allow 4789/udp",
+			title: "Adding ufw rule 4789/udp",
+		},
+	}
+
+	err := sshKeyAuthCmds(host, client, commands)
 	if err != nil {
 		return err
 	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow 2376/tcp", config)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow 7946/tcp", config)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow 7946/udp", config)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow 4789/udp", config)
-	if err != nil {
-		return err
-	}
+
 	logWithPrefix(host, "Ufw configured")
 	return nil
 }
 
-func joinToSwarm(node node, leaderHost, passToKey string, file *clusterFile) (node, error) {
-	host := node.Host
-	config := findSSHKeysAndInitConnection(passToKey, file)
-	err := configUfwToWorkInSwarmMode(host, config)
+func joinToSwarm(node node, leaderHost string, file *clusterFile) (node, error) {
+
+	client := getSSHClient(file)
+
+	err := configUfwToWorkInSwarmMode(node.Host, client)
 	if err != nil {
 		return node, err
 	}
 	var token string
 	if mode {
-		_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow 2377/tcp", config)
+		_, err = client.Exec(node.Host, "sudo ufw allow 2377/tcp")
 		if err != nil {
 			return node, err
 		}
-		token = getToken("manager", leaderHost, config)
+		token, err = getToken("manager", leaderHost, client)
+		if err != nil {
+			return node, err
+		}
 		node.SwarmMode = manager
 	} else {
-		token = getToken("worker", leaderHost, config)
+		token, err = getToken("worker", leaderHost, client)
+		if err != nil {
+			return node, err
+		}
 		node.SwarmMode = worker
 	}
-	err = reloadUfwAndDocker(host, config)
+	err = reloadUfwAndDocker(node.Host, client)
 	if err != nil {
 		node.SwarmMode = ""
 		return node, err
 	}
-	gc.Doing("Joining " + host + " to swarm")
+	gc.Doing("Joining " + node.Host + " to swarm")
 	// "!" is used to avoid logging
-	_, err = execSSHCommandWithoutPanic(host, "!sudo "+token, config)
+	_, err = client.Exec(node.Host, "!sudo "+token)
 	if err != nil {
 		node.SwarmMode = ""
 		return node, err

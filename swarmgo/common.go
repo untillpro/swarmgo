@@ -11,7 +11,6 @@ package swarmgo
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,10 +26,43 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 )
+
+const (
+	swarmgoConfigFileName = "swarmgo-config.yml"
+	swarmgoConfigPerms    = 0644
+)
+
+// SSHCommand represents single SSH command
+type SSHCommand struct {
+	cmd   string
+	title string
+}
+
+func getSSHClientInstance(userName, privateKeyFile string) *SSHClient {
+	client := Client(userName, privateKeyFile)
+	client.Verbose = true
+	client.StrictHostKeyChecking = false
+	return client
+}
+
+func getSSHClient(file *clusterFile) *SSHClient {
+	_, privateKey := findSSHKeys(file)
+	return getSSHClientInstance(file.ClusterUserName, privateKey)
+}
+
+func sshKeyAuthCmds(host string, client *SSHClient, commands []SSHCommand) error {
+	for _, cmd := range commands {
+		logWithPrefix(host, cmd.title)
+		_, error := client.Exec(host, cmd.cmd)
+		if error != nil {
+			return error
+		}
+	}
+	return nil
+}
 
 func readPasswordPrompt(prompt string) string {
 	fmt.Print(prompt + ":")
@@ -75,73 +107,6 @@ func redirectLogs() *os.File {
 	gc.ExitIfError(err)
 	log.SetOutput(f)
 	return f
-}
-
-func sudoExecSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
-	return execSSHCommand(host, "sudo "+cmd, config)
-}
-
-func sudoExecSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	return execSSHCommandWithoutPanic(host, "sudo "+cmd, config)
-}
-
-func execSSHCommand(host, cmd string, config *ssh.ClientConfig) string {
-	bs, err := execSSHCommandWithoutPanic(host, cmd, config)
-	gc.ExitIfError(err, string(bs))
-	return string(bs)
-}
-
-func execSSHCommandWithoutPanic(host, cmd string, config *ssh.ClientConfig) (string, error) {
-	if strings.HasPrefix(cmd, "!") {
-		cmd = cmd[1:]
-	} else {
-		gc.Verbose("SSH", host+", "+cmd)
-	}
-	conn, err := ssh.Dial("tcp", host+":22", config)
-	if err != nil {
-		gc.Verbose("SSH:Dial failed", "")
-		return "", err
-	}
-	session, err := conn.NewSession()
-	if err != nil {
-		gc.Verbose("SSH:Session creation failed", "")
-		return "", err
-	}
-	defer session.Close()
-	var bErr bytes.Buffer
-	session.Stderr = &bErr
-
-	bs, err := session.Output(cmd)
-	if err != nil {
-		stdErrStr := bErr.String()
-		if stdErrStr != "" {
-			err = errors.New(err.Error() + " / " + stdErrStr)
-		}
-		gc.Verbose("SSH:session.Output failed", stdErrStr, string(bs))
-		return string(bs), err
-	}
-	return string(bs), nil
-}
-
-func getSSHSession(host string, config *ssh.ClientConfig) *ssh.Session {
-	conn, err := ssh.Dial("tcp", host+":22", config)
-	gc.ExitIfError(err)
-	session, err := conn.NewSession()
-	gc.ExitIfError(err)
-	return session
-}
-
-func initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, password string) *ssh.ClientConfig {
-	pemBytes, err := ioutil.ReadFile(privateKeyFile)
-	gc.ExitIfError(err)
-	signer, err := ssh.ParsePrivateKeyWithPassphrase(pemBytes, []byte(password))
-	gc.ExitIfError(err)
-	sshConfig := &ssh.ClientConfig{
-		User:            userName,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-	}
-	return sshConfig
 }
 
 func contains(slice []string, find string) bool {
@@ -258,10 +223,11 @@ func unmarshalClusterYml() *clusterFile {
 	return &clusterFileStruct
 }
 
-func findSSHKeysAndInitConnection(passToKey string, config *clusterFile) *ssh.ClientConfig {
-	_, privateKeyFile := findSSHKeys(config)
-	gc.ExitIfFalse(FileExists(privateKeyFile), "Can't find private key to connect to remote server!")
-	return initSSHConnectionConfigWithPublicKeys(config.ClusterUserName, privateKeyFile, passToKey)
+func marshalClusterYml(config *clusterFile) {
+	marshaledNode, err := yaml.Marshal(config)
+	gc.ExitIfError(err)
+	path := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
+	gc.ExitIfError(ioutil.WriteFile(path, marshaledNode, swarmgoConfigPerms))
 }
 
 func substringAfterIncludeValue(value string, a string) string {
@@ -334,6 +300,7 @@ func generateRandomString(length int) string {
 	return string(b)
 }
 
+// ParseDockerVersion returns Docker version from 'docker -v' command stdout
 func ParseDockerVersion(stdout string) string {
 
 	re := regexp.MustCompile("(\\d+\\.\\d+(\\.\\d+)?)")
@@ -342,7 +309,8 @@ func ParseDockerVersion(stdout string) string {
 
 	if len(submatch) > 1 {
 		return submatch[1]
-	} else {
-		return ""
 	}
+
+	return ""
+
 }

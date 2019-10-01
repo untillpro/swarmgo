@@ -14,7 +14,14 @@ Steps:
 - Fork swarmgo repo to `mycluster`
 - git clone `mycluster`
 - Run `go build swarmgo.go` to build swarmgo executable
-- Use `swarmgo init` to init configs and change `swarmgo-config.yml` in root folder if needed
+- Run `swarmgo init` to init config
+  - Command creates `nodes/swarmgo-config.yml` with the swarmgo configuration settings
+- Run `swarmgo keys` to generate new or specify existing SSH keys
+  - `swarmgo keys` generates new key pair
+  - `swarmgo keys -p PRIVATE_KEY_PATH -u PUBLIC_KEY_PATH` tells to use the existing key pair
+  - Keys are kept in `nodes/swarmgo-config.yml` 
+- Run ``eval `swarmgo agent` ``
+  - Command starts `ssh-agent` enabling single sign-on in the current terminal session
 - Run `swarmgo add <Alias1>=<IP1> <Alias2>=<IP2>`
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
