@@ -73,6 +73,7 @@ func Execute() {
 	rootCmd.AddCommand(agentCmd)
 
 	rootCmd.AddCommand(addNodeCmd)
+	addNodeCmd.Flags().BoolVarP(&skipSSHConfiguration, "Do not configure SSH at nodes", "s", false, "Use this option when ClusterUser already exists and SSH access is configured for on nodes being added")
 
 	rootCmd.AddCommand(dockerCmd)
 	dockerCmd.Flags().BoolVarP(&forceUpgradeDocker, "Force upgrade", "u", false, "Upgrade docker to the latest version, if already installed")

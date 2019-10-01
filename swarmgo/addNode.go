@@ -20,6 +20,8 @@ import (
 
 const nodesFileName = "nodes.yml"
 
+var skipSSHConfiguration bool = false
+
 type user struct {
 	host, alias, userName, rootUserName string
 }
@@ -108,9 +110,11 @@ func add(cmd *cobra.Command, args []string) {
 
 	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
 
-	for _, value := range users {
-		err := configHostToUseKeys(value, publicKeyFile)
-		gc.ExitIfError(err, "Unable to add user for node: "+value.host)
+	if !skipSSHConfiguration {
+		for _, value := range users {
+			err := configHostToUseKeys(value, publicKeyFile)
+			gc.ExitIfError(err, "Unable to add user for node: "+value.host)
+		}
 	}
 
 	nodesChannel := make(chan interface{})
@@ -118,7 +122,7 @@ func add(cmd *cobra.Command, args []string) {
 		go func(user user) {
 			client := getSSHClientInstance(user.userName, privateKeyFile)
 			uname, err := client.Exec(user.host, "uname -a")
-			if err == nil {
+			if err == nil && !skipSSHConfiguration {
 				err = configureFirewall(user.host, client)
 			}
 			if err != nil {
@@ -157,7 +161,7 @@ func add(cmd *cobra.Command, args []string) {
 
 var addNodeCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Configure SSH access to nodes and add nodes to nodes.yml",
+	Short: "Configure SSH access to nodes and add nodes to nodes.yml. Use -s option to skip SSH configuration",
 	Long:  `Use add <node name1>=<IP1> <node name2>=<IP2> ...`,
 	Args:  cobra.MinimumNArgs(1),
 	Run:   add,
