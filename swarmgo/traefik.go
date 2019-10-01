@@ -19,7 +19,6 @@ import (
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,18 +56,17 @@ var traefikCmd = &cobra.Command{
 	Use:   "traefik",
 	Short: "Install traefik with let's encrypt and consul on swarm cluster",
 	Long:  `Install traefik with let's encrypt and consul on swarm cluster`,
-	Run: func(cmd *cobra.Command, args []string) {
-		initCommand("traefik")
-		defer finitCommand()
-		passToKey := readKeyPassword()
+	Run: loggedCmd(func(args []string) {
+		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getWorkingDir())
 		host := firstEntry.node.Host
-		var config = findSSHKeysAndInitConnection(passToKey, clusterFile)
+		client := getSSHClient(clusterFile)
 		if clusterFile.EncryptSwarmNetworks {
 			encrypted = encryptedFlag
 		}
-		sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" traefik || true", config)
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" traefik")
+
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
 			traefikComposeName = traefikComposeFileName
@@ -76,14 +74,14 @@ var traefikCmd = &cobra.Command{
 			if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
 				gc.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
 			}
-			deployConsul(nodes, clusterFile, host, config)
-			storeTraefikConfigToConsul(clusterFile, host, config)
-			deployTraefikSSL(clusterFile, host, config)
+			deployConsul(nodes, clusterFile, host, client)
+			storeTraefikConfigToConsul(clusterFile, host, client)
+			deployTraefikSSL(clusterFile, host, client)
 		} else {
-			execSSHCommand(host, "mkdir -p ~/"+traefikFolderName, config)
+			client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
 			traefikComposeName = traefikTestComposeFileName
 			gc.Info("Traefik in test mode (in localhost) will be deployed")
-			deployTraefik(clusterFile, host, traefikComposeName, config)
+			deployTraefik(clusterFile, host, traefikComposeName, client)
 		}
 		for i, node := range nodes {
 			if node.SwarmMode == leader {
@@ -96,19 +94,21 @@ var traefikCmd = &cobra.Command{
 		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
 		gc.Info("Nodes written in file")
 		gc.ExitIfError(err)
-	},
+	}),
 }
 
-func storeTraefikConfigToConsul(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
+func storeTraefikConfigToConsul(clusterFile *clusterFile, host string, client *SSHClient) {
 	gc.Info("Traefik store config started")
-	execSSHCommand(host, "mkdir -p ~/"+traefikFolderName, config)
 	traefikStoreConfig := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikStoreConfigFileName), clusterFile)
-	execSSHCommand(host, "cat > ~/"+traefikStoreConfigFileName+" << EOF\n\n"+traefikStoreConfig.String()+"\nEOF", config)
-	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikStoreConfigFileName+" traefik", config)
+
+	client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
+	client.ExecOrExit(host, "cat > ~/"+traefikStoreConfigFileName+" << EOF\n\n"+traefikStoreConfig.String()+"\nEOF")
+	client.ExecOrExit(host, "sudo docker stack deploy -c "+traefikStoreConfigFileName+" traefik")
+
 	gc.Info("Traefik configs stored in consul")
 }
 
-func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
+func deployConsul(nodes []node, clusterFile *clusterFile, host string, client *SSHClient) {
 	gc.Info("Consul deployment started")
 	var bootstrap uint8
 	for _, node := range nodes {
@@ -119,7 +119,7 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 	var nodesForConsul managerNodes
 	nodesForConsul.Consul = clusterFile.Consul
 	var consulAgentConfFileName, consulServerConfFileName, consulComposeFileName string
-	managerIDs := sudoExecSSHCommand(host, "docker node ls -q -f role=manager", config)
+	managerIDs := client.ExecOrExit(host, "sudo docker node ls -q -f role=manager")
 	managers := strings.Split(strings.Trim(managerIDs, "\r\n "), "\n")
 	if bootstrap >= 3 {
 		nodesForConsul.NodeID1 = managers[0]
@@ -141,17 +141,18 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, config *s
 	gc.ExitIfError(err)
 	consulCompose := executeTemplateToFile(filepath.Join(getWorkingDir(), consulComposeFileName), nodesForConsul)
 	gc.Info("Consul configs modified")
-	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"agent", config)
-	execSSHCommand(host, "mkdir -p ~/"+consulFolderName+"server", config)
-	execSSHCommand(host, "cat > ~/"+consulAgentConfFileName+" << EOF\n\n"+string(consulAgentConf)+"\nEOF", config)
-	execSSHCommand(host, "cat > ~/"+consulServerConfFileName+" << EOF\n\n"+string(consulServerConf)+"\nEOF", config)
-	execSSHCommand(host, "cat > ~/"+consulComposeFileName+" << EOF\n\n"+consulCompose.String()+"\nEOF", config)
+	client.ExecOrExit(host, "mkdir -p ~/"+consulFolderName+"agent")
+	client.ExecOrExit(host, "mkdir -p ~/"+consulFolderName+"server")
+	client.ExecOrExit(host, "cat > ~/"+consulAgentConfFileName+" << EOF\n\n"+string(consulAgentConf)+"\nEOF")
+	client.ExecOrExit(host, "cat > ~/"+consulServerConfFileName+" << EOF\n\n"+string(consulServerConf)+"\nEOF")
+	client.ExecOrExit(host, "cat > ~/"+consulComposeFileName+" << EOF\n\n"+consulCompose.String()+"\nEOF")
+
 	gc.Info("Consul configs written to host")
-	sudoExecSSHCommand(host, "docker stack deploy -c "+consulComposeFileName+" traefik", config)
+	client.ExecOrExit(host, "sudo docker stack deploy -c "+consulComposeFileName+" traefik")
 	gc.Info("Consul deployed, wait for consul sync")
 	waitSuccessOrFailAfterTimer(host, "Synced node info", "Consul synced",
-		"Consul doesn't sync in five minutes, deployment stopped", "docker service logs traefik_consul_main_server1",
-		5, config)
+		"Consul doesn't sync in five minutes, deployment stopped", "sudo docker service logs traefik_consul_main_server1",
+		5, client)
 }
 
 func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buffer {
@@ -162,32 +163,32 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 	return &tmplBuffer
 }
 
-func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, config *ssh.ClientConfig) {
+func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, client *SSHClient) {
 	tmplBuffer := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
-	sudoExecSSHCommand(host, "docker network create -d overlay"+encrypted+" webgateway || true", config)
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" webgateway")
 	gc.Info("webgateway networks created")
-	execSSHCommand(host, "cat > ~/"+traefikFolderName+"traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF", config)
-	sudoExecSSHCommand(host, "docker stack deploy -c "+traefikFolderName+"traefik.yml traefik", config)
+	client.ExecOrExit(host, "cat > ~/"+traefikFolderName+"traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF")
+	client.ExecOrExit(host, "sudo docker stack deploy -c "+traefikFolderName+"traefik.yml traefik")
 }
 
-func deployTraefikSSL(clusterFile *clusterFile, host string, config *ssh.ClientConfig) {
-	deployTraefik(clusterFile, host, traefikComposeFileName, config)
+func deployTraefikSSL(clusterFile *clusterFile, host string, client *SSHClient) {
+	deployTraefik(clusterFile, host, traefikComposeFileName, client)
 	gc.Doing("Waiting for certs")
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
-		"docker service logs traefik_traefik", 3, config)
+		"sudo docker service logs traefik_traefik", 3, client)
 	gc.Info("traefik deployed")
 }
 
 func waitSuccessOrFailAfterTimer(host, success, logSuccess, logFail, cmd string, timeBeforeFailInMinutes time.Duration,
-	config *ssh.ClientConfig) {
+	client *SSHClient) {
 	timer := time.NewTimer(timeBeforeFailInMinutes * time.Minute)
 	doneChan := make(chan struct{})
 	go func() {
 		for true {
 			time.Sleep(10 * time.Second)
-			out := sudoExecSSHCommand(host, cmd, config)
+			out := client.ExecOrExit(host, cmd)
 			if strings.Contains(out, success) {
 				doneChan <- struct{}{}
 				break

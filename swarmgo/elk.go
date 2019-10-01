@@ -29,10 +29,8 @@ var eLKCmd = &cobra.Command{
 	Use:   "elk",
 	Short: "Deploy ELK stack",
 	Long:  `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
-	Run: func(cmd *cobra.Command, args []string) {
-		initCommand("elk")
-		defer finitCommand()
-		passToKey := readKeyPassword()
+	Run: loggedCmd(func(args []string) {
+		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		fmt.Println("Enter Kibana login")
 		kibanaUser := waitUserInput()
@@ -43,41 +41,40 @@ var eLKCmd = &cobra.Command{
 		if !firstEntry.node.Traefik {
 			gc.Fatal("Need to deploy traefik before elk deploy")
 		}
-		deployELKStack(passToKey, clusterFile, firstEntry)
-	},
+		deployELKStack(clusterFile, firstEntry)
+	}),
 }
 
-func deployELKStack(passToKey string, clusterFile *clusterFile, firstEntry *entry) {
+func deployELKStack(clusterFile *clusterFile, firstEntry *entry) {
 	host := firstEntry.node.Host
-	config := findSSHKeysAndInitConnection(passToKey, clusterFile)
+	client := getSSHClient(clusterFile)
 	forCopy := infoForCopy{
-		firstEntry,
-		config,
-		clusterFile,
+		host:   firstEntry.node.Host,
+		client: client,
 	}
 	gc.Info("Trying to install dos2unix")
-	sudoExecSSHCommand(host, "apt-get install dos2unix", config)
+	client.ExecOrExit(host, "sudo apt-get install dos2unix")
 	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
 	appliedBuffer := executeTemplateToFile(eLKComposeFileName, clusterFile)
-	execSSHCommand(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
-		appliedBuffer.String()+"\nEOF", config)
+	client.ExecOrExit(host, "cat > ~/"+eLKComposeFileName+" << EOF\n\n"+
+		appliedBuffer.String()+"\nEOF")
 	gc.Info(eLKComposeFileName, "applied by template")
 	gc.Info("Increasing vm.max_map_count")
-	increaseVMMaxMapCount(passToKey, clusterFile)
+	increaseVMMaxMapCount(clusterFile)
 	gc.Info("Increased")
 	gc.Info("Trying to deploy ELK")
-	sudoExecSSHCommand(host, "docker stack deploy -c "+eLKComposeFileName+" elk", config)
+	client.ExecOrExit(host, "sudo docker stack deploy -c "+eLKComposeFileName+" elk")
 	gc.Info("ELK deployed")
 }
 
-func increaseVMMaxMapCount(passToKey string, clusterFile *clusterFile) {
+func increaseVMMaxMapCount(clusterFile *clusterFile) {
 	nodesFromYml := getNodesFromYml(getWorkingDir())
 	doneChannel := make(chan interface{})
 	for _, value := range nodesFromYml {
 		go func(node node) {
-			config := findSSHKeysAndInitConnection(passToKey, clusterFile)
-			_, err := sudoExecSSHCommandWithoutPanic(node.Host, "sysctl -w vm.max_map_count=262144", config)
+			client := getSSHClient(clusterFile)
+			_, err := client.Exec(node.Host, "sudo sysctl -w vm.max_map_count=262144")
 			if err != nil {
 				doneChannel <- err
 			}

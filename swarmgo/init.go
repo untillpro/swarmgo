@@ -25,7 +25,7 @@ var initCmd = &cobra.Command{
 		}
 
 		configEntry := executeTemplateToFile(defaultClusterFileRelativePath, clusterFile)
-		gc.ExitIfError(ioutil.WriteFile(clusterFilePath, configEntry.Bytes(), 0644))
+		gc.ExitIfError(ioutil.WriteFile(clusterFilePath, configEntry.Bytes(), swarmgoConfigPerms))
 		gc.Info("Done: swarmgo-config.yml created in " + getWorkingDir() + " folder, perhaps you will have to modify some variables")
 	}),
 }

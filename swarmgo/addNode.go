@@ -15,24 +15,26 @@ import (
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
 const nodesFileName = "nodes.yml"
 
 type user struct {
-	host, alias, userName, passToRoot, rootUserName string
+	host, alias, userName, rootUserName string
 }
 type node struct {
 	Host, Alias, DockerVersion string
 	SwarmMode                  string
+	Uname                      string
 	Traefik                    bool
 }
 
 func add(cmd *cobra.Command, args []string) {
 	initCommand("add")
 	defer finitCommand()
+
+	checkSSHAgent()
 
 	// *************************************************
 	gc.Doing("Reading config")
@@ -93,21 +95,6 @@ func add(cmd *cobra.Command, args []string) {
 	gc.ExitIfFalse(len(nodesToAdd) > 0, "Nothing to add")
 
 	// *************************************************
-	gc.Doing("Checking keys")
-
-	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
-	gc.Info("Public Key location:", publicKeyFile)
-	gc.Info("Private Key location:", privateKeyFile)
-
-	filesExist := FileExists(publicKeyFile) && FileExists(privateKeyFile)
-
-	passToKey := readKeyPassword()
-	if !filesExist {
-		gc.Doing("Generating keys")
-		bitSize := 4096
-		err := generateKeysAndWriteToFile(bitSize, privateKeyFile, publicKeyFile, passToKey)
-		gc.ExitIfError(err)
-	}
 
 	var users []user
 	for name, IP := range nodesToAdd {
@@ -116,27 +103,37 @@ func add(cmd *cobra.Command, args []string) {
 		user.host = IP
 		user.rootUserName = rootUserName
 		user.userName = clusterFile.ClusterUserName
-		user.passToRoot = readPasswordPrompt("Password for " + user.rootUserName + "@" + user.host)
 		users = append(users, user)
+	}
+
+	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
+
+	for _, value := range users {
+		err := configHostToUseKeys(value, publicKeyFile)
+		gc.ExitIfError(err, "Unable to add user for node: "+value.host)
 	}
 
 	nodesChannel := make(chan interface{})
 	for _, value := range users {
 		go func(user user) {
-			//passToRoot to user and key from input
-			err := configHostToUseKeys(user, publicKeyFile, privateKeyFile, passToKey)
+			client := getSSHClientInstance(user.userName, privateKeyFile)
+			uname, err := client.Exec(user.host, "uname -a")
+			if err == nil {
+				err = configureFirewall(user.host, client)
+			}
 			if err != nil {
 				nodesChannel <- err
 			} else {
 				nodeFromFunc := node{
 					Host:  user.host,
 					Alias: user.alias,
+					Uname: uname,
 				}
 				nodesChannel <- nodeFromFunc
 			}
 		}(value)
 	}
-	errMsgs := make([]string, 0, len(args))
+	errMsgs := make([]string, 0, len(nodesToAdd))
 	for range nodesToAdd {
 		nodeFromChannel := <-nodesChannel
 		switch nodeFromChannel.(type) {
@@ -155,9 +152,9 @@ func add(cmd *cobra.Command, args []string) {
 	nodesFile := filepath.Join(getWorkingDir(), nodesFileName)
 	gc.ExitIfError(ioutil.WriteFile(nodesFile, marshaledNode, 0600))
 	gc.ExitIfFalse(len(errMsgs) == 0, "Failed to add some node(s)")
+	gc.Info("Done")
 }
 
-// addNodeCmd represents the addNode command
 var addNodeCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Configure SSH access to nodes and add nodes to nodes.yml",
@@ -166,109 +163,43 @@ var addNodeCmd = &cobra.Command{
 	Run:   add,
 }
 
-func configHostToUseKeys(user user, publicKeyFile, privateKeyFile, passToKey string) error {
+func configHostToUseKeys(user user, publicKeyFile string) error {
+
 	host := user.host
 	userName := user.userName
 	rootUserName := user.rootUserName
+	logWithPrefix(host, "Configuring cluster user...")
 
-	// *************************************************
-	sshConfig := &ssh.ClientConfig{
-		User:            rootUserName,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.Password(user.passToRoot)},
-	}
+	scriptPath := filepath.Join(getSourcesDir(), "/scripts/adduser.sh")
+	scriptBytes, err := ioutil.ReadFile(scriptPath)
+	gc.ExitIfError(err, "Unable to read script from "+scriptPath)
 
-	doingWithPrefix(host, "Adding new user "+userName)
-	_, err := sudoExecSSHCommandWithoutPanic(host, "adduser --disabled-password --gecos \"\" "+userName, sshConfig)
-	if err != nil {
-		return err
-	}
-
-	// *************************************************
-	doingWithPrefix(host, "Giving sudo permissions to "+userName)
-	pass := generateRandomString(32)
-	_, err = sudoExecSSHCommandWithoutPanic(host, "echo \""+userName+":"+pass+"\" | sudo chpasswd", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "usermod -aG sudo "+userName, sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "echo '"+userName+" ALL=(ALL:ALL) NOPASSWD: ALL' | sudo EDITOR='tee -a' visudo", sshConfig)
-	if err != nil {
-		return err
-	}
-
-	// *************************************************
-	doingWithPrefix(host, "Disabling the password for "+user.rootUserName)
-
-	sshConfig = &ssh.ClientConfig{
-		User:            userName,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Auth:            []ssh.AuthMethod{ssh.Password(pass)},
-	}
-
-	_, err = sudoExecSSHCommandWithoutPanic(host, "passwd -l "+user.rootUserName, sshConfig)
-	if err != nil {
-		return err
-	}
-
-	// *************************************************
-	doingWithPrefix(host, "Adding public key to host")
-	_, err = execSSHCommandWithoutPanic(host, "mkdir -p ~/.ssh", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = execSSHCommandWithoutPanic(host, "chmod 700 ~/.ssh", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = execSSHCommandWithoutPanic(host, "touch ~/.ssh/authorized_keys", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = execSSHCommandWithoutPanic(host, "chmod 600 ~/.ssh/authorized_keys", sshConfig)
-	if err != nil {
-		return err
-	}
-	//read public key
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
-	if err != nil {
-		return err
-	}
-	_, err = execSSHCommandWithoutPanic(host, "echo \""+string(pemBytes)+"\" | tee ~/.ssh/authorized_keys", sshConfig)
-	if err != nil {
-		return err
-	}
+	gc.ExitIfError(err, "Unable to read public key from "+publicKeyFile)
 
-	// *************************************************
-	doingWithPrefix(host, "Disabling password auth")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config",
-		sshConfig)
-	if err != nil {
-		return err
-	}
-
-	// *************************************************
-	doingWithPrefix(host, "Allowing ssh")
-	_, err = sudoExecSSHCommandWithoutPanic(host, "sudo service ssh restart", sshConfig)
-	if err != nil {
-		return err
-	}
-	sshConfig = initSSHConnectionConfigWithPublicKeys(userName, privateKeyFile, passToKey)
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw allow OpenSSH", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "yes | sudo ufw enable", sshConfig)
-	if err != nil {
-		return err
-	}
-	_, err = sudoExecSSHCommandWithoutPanic(host, "ufw reload", sshConfig)
+	client := getSSHClientInstance(rootUserName, "")
+	_, err = client.Exec(host, "echo '"+string(scriptBytes)+"' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh "+userName+" "+generateRandomString(32)+" \""+string(pemBytes)+"\" && rm ~/setup.sh")
 	if err != nil {
 		return err
 	}
 	logWithPrefix(host, "Done")
 	return nil
+}
+
+func configureFirewall(host string, client *SSHClient) error {
+	commands := []SSHCommand{
+		SSHCommand{
+			cmd:   "sudo ufw allow OpenSSH",
+			title: "Allowing OpenSSH in firewall",
+		},
+		SSHCommand{
+			cmd:   "sudo yes | sudo ufw enable",
+			title: "Enabling firewall",
+		},
+		SSHCommand{
+			cmd:   "sudo ufw reload",
+			title: "Reloading firewall",
+		},
+	}
+	return sshKeyAuthCmds(host, client, commands)
 }
