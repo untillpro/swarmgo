@@ -19,6 +19,8 @@ services:
     configs:
       - source: server
         target: /consul/config/conf.json
+    environment:
+      - CONSUL_HTTP_ADDR=consul_main_server1:8500
     deploy:
       placement:
         constraints:
@@ -41,6 +43,8 @@ services:
     configs:
       - source: server
         target: /consul/config/conf.json
+    environment:
+      - CONSUL_HTTP_ADDR=consul_main_server2:8500
     deploy:
       placement:
         constraints:
@@ -63,6 +67,8 @@ services:
     configs:
       - source: server
         target: /consul/config/conf.json
+    environment:
+      - CONSUL_HTTP_ADDR=consul_main_server3:8500
     deploy:
       placement:
         constraints:
@@ -85,6 +91,8 @@ services:
     configs:
       - source: server
         target: /consul/config/conf.json
+    environment:
+      - CONSUL_HTTP_ADDR=consul_server:8500
     deploy:
       mode: global
       placement:
