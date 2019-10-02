@@ -22,14 +22,12 @@ groups:
         $value}}%.'
           identifier: 'Memory alert for Swarm node {{ $labels.node_name }}'
       - alert: node_disk_usage
-        expr: ((node_filesystem_size_bytes{fstype=~"xfs|ext4"} - node_filesystem_free_bytes{fstype=~"xfs|ext4"})
-          * 100 / node_filesystem_size_bytes) * ON(instance) GROUP_LEFT(node_name)
-          node_meta > 85
+        expr: node_filesystem_free_bytes{mountpoint ="/rootfs"} / node_filesystem_size_bytes{mountpoint ="/rootfs"} * 100 < 10
         for: 5m
         labels:
           severity: warning
         annotations:
-          description: "Swarm node {{ $labels.node_name }} disk usage is at {{ humanize
+          description: "Swarm node {{ $labels.node_name }} disk free space is at {{ humanize
         $value}}%."
           identifier: "Disk alert for Swarm node {{ $labels.node_name }}"
       - alert: node_disk_fill_rate_6h
