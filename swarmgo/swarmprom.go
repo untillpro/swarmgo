@@ -11,6 +11,7 @@ package swarmgo
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,9 +22,16 @@ import (
 )
 
 const (
-	swarmpromFolder          = "swarmprom"
-	swarmpromComposeFileName = swarmpromFolder + "/swarmprom.yml"
-	alertmanagerConfigPath   = swarmpromFolder + "/alertmanager/alertmanager.yml"
+	swarmpromFolder                = "swarmprom"
+	swarmpromComposeFileName       = swarmpromFolder + "/swarmprom.yml"
+	alertmanagerTargetConfigPath   = swarmpromFolder + "/alertmanager/alertmanager.yml"
+	alertmanagerSlackConfigPath    = swarmpromFolder + "/alertmanager/alertmanager-slack.yml"
+	alertmanagerNoAlertsConfigPath = swarmpromFolder + "/alertmanager/alertmanager-noalerts.yml"
+)
+
+var (
+	argSlackWebhookURL string
+	argNoAlerts        bool
 )
 
 type infoForCopy struct {
@@ -44,11 +52,24 @@ var swarmpromCmd = &cobra.Command{
 	}),
 }
 
+func templateAndCopy(client *SSHClient, host, localFile, destFile string, clusterFile *clusterFile) {
+	appliedBuffer := executeTemplateToFile(localFile, clusterFile)
+	client.ExecOrExit(host, "cat > "+destFile+" << EOF\n\n"+appliedBuffer.String()+"\nEOF")
+	gc.Info(destFile, fmt.Sprintf("Copied and applied by template '%s'->'%s'", localFile, destFile))
+}
+
 func deploySwarmprom(clusterFile *clusterFile, firstEntry *entry) {
 	client := getSSHClient(clusterFile)
 	clusterFile.GrafanaPassword = readPasswordPrompt("Grafana admin user password")
-	gc.Info("Enter webhook URL for slack channel", clusterFile.ChannelName)
-	clusterFile.WebhookURL = waitUserInput()
+	if !argNoAlerts {
+		if len(argSlackWebhookURL) == 0 {
+			gc.Info("Enter webhook URL for slack channel", clusterFile.ChannelName)
+			clusterFile.WebhookURL = waitUserInput()
+		} else {
+			gc.Info("Setting webhook URL for slack channel to ", argSlackWebhookURL)
+			clusterFile.WebhookURL = argSlackWebhookURL
+		}
+	}
 	//TODO don't forget to implement passwords for prometheus and traefik
 	host := firstEntry.node.Host
 	forCopy := infoForCopy{
@@ -58,17 +79,30 @@ func deploySwarmprom(clusterFile *clusterFile, firstEntry *entry) {
 	client.ExecOrExit(host, "sudo apt-get install dos2unix")
 	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, swarmpromFolder)))
-	filesToApplyTemplate := [2]string{alertmanagerConfigPath, swarmpromComposeFileName}
-	for _, fileToApplyTemplate := range filesToApplyTemplate {
-		appliedBuffer := executeTemplateToFile(fileToApplyTemplate, clusterFile)
-		client.ExecOrExit(host, "cat > ~/"+fileToApplyTemplate+" << EOF\n\n"+
-			appliedBuffer.String()+"\nEOF")
-		gc.Info(fileToApplyTemplate, "applied by template")
+
+	alertMgrSrcCfg := alertmanagerSlackConfigPath
+	if argNoAlerts {
+		alertMgrSrcCfg = alertmanagerNoAlertsConfigPath
 	}
+
+	templateAndCopy(client, host, alertMgrSrcCfg, "~/"+alertmanagerTargetConfigPath, clusterFile)
+	templateAndCopy(client, host, swarmpromComposeFileName, "~/"+swarmpromComposeFileName, clusterFile)
+
+	/*	filesToApplyTemplate := [2]string{alertmanagerTargetConfigPath, "~/" + swarmpromComposeFileName}
+		for _, fileToApplyTemplate := range filesToApplyTemplate {
+			appliedBuffer := executeTemplateToFile(fileToApplyTemplate, clusterFile)
+			client.ExecOrExit(host, "cat > "+fileToApplyTemplate+" << EOF\n\n"+
+				appliedBuffer.String()+"\nEOF")
+			gc.Info(fileToApplyTemplate, "applied by template")
+		} */
 	gc.Info("Trying to deploy swarmprom")
 	client.ExecOrExit(host, "sudo docker stack deploy -c "+swarmpromComposeFileName+" prom")
 	gc.Info("Swarmprom deployed")
-	gc.ExitIfError(postTestMessageToAlertmanager(clusterFile.WebhookURL, clusterFile.ChannelName))
+
+	if !argNoAlerts {
+		gc.Info("Testing alerts")
+		gc.ExitIfError(postTestMessageToAlertmanager(clusterFile.WebhookURL, clusterFile.ChannelName))
+	}
 }
 
 func copyToHost(forCopy *infoForCopy, src string) {
