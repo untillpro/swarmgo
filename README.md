@@ -35,8 +35,11 @@ Steps:
   - Install swarm in `worker` mode for all nodes which do not have swarm configured yet
   - At least one manager must be configured first
 - Run `swarmgo traefik` to deploy traefik
-- Run `swarmgo swarmprom`
-  - https://domen/grafana
+- Run `swarmgo swarmprom` to install prometheus, alertmanager, cadvisor and grafana
+  - Use `-n` option to disable alerts
+  - Use `-s WEBHOOK_URL` to configure Slack alerts for specified webhook URL
+  - Use `-u` option to update alertmanager settings, can be combined with `-n` or `-s` options
+  - Grafana service will be available at https://domen/grafana
 
 
 Services:

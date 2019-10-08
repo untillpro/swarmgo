@@ -84,6 +84,7 @@ func Execute() {
 	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
 
 	rootCmd.AddCommand(swarmpromCmd)
+	swarmpromCmd.Flags().BoolVarP(&argUpgradeSwarmprom, "update", "u", false, "Update alert manager configuration")
 	swarmpromCmd.Flags().BoolVarP(&argNoAlerts, "noalerts", "n", false, "Configure no push alerts in Prometheus Alertmamnager")
 	swarmpromCmd.Flags().StringVarP(&argSlackWebhookURL, "slackWebhookUrl", "s", "", "Configure Slack alerts by specifying Webhook URL")
 
