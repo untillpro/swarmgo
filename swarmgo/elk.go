@@ -32,10 +32,8 @@ var eLKCmd = &cobra.Command{
 	Run: loggedCmd(func(args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
-		fmt.Println("Enter Kibana login")
-		kibanaUser := waitUserInput()
-		fmt.Println("Enter Kibana password")
-		kibanaPass := waitUserInput()
+		kibanaUser := readPasswordPrompt("Kibana login")
+		kibanaPass := readPasswordPrompt("Kibana password")
 		kibanaHashedPass := strings.Replace(hashPassword(kibanaPass), "$", "\\$\\$", -1)
 		clusterFile.KibanaCreds = fmt.Sprintf("%s:%s", kibanaUser, kibanaHashedPass)
 		if !firstEntry.node.Traefik {
