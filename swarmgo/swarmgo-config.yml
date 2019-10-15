@@ -42,9 +42,9 @@ ClusterUser: cluster
 
 Alertmanager: prom/alertmanager:v0.15.3
 NodeExporter: stefanprodan/swarmprom-node-exporter:v0.16.0
-Grafana: grafana/grafana:5.3.4
+Grafana: grafana/grafana:6.4.2
 Prometheus: prom/prometheus:v2.5.0
-Traefik: traefik:v1.7.18
+Traefik: traefik:v2.0.1
 Cadvisor: google/cadvisor:v0.31.0
 Consul: consul:1.4.2
 Elasticsearch: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.4
@@ -95,11 +95,8 @@ PrometheusUser: admin
 # Traefik User Name
 TraefikUser: admin
 
-# ************************************************************
-#
-# Alertmanager configuration
-#
-#
+# Alertmanager user name
+AlertmanagerUser: admin
 
+# Alertmanager slack notifications settings
 ChannelName: cluster
-AlertmanagerUser: alertmanager

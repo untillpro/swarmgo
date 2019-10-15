@@ -16,39 +16,40 @@ import (
 )
 
 type clusterFile struct {
-	OrganizationName     string                       `yaml:"Organization"`
-	ClusterName          string                       `yaml:"Cluster"`
-	RootUserName         string                       `yaml:"RootUser"`
-	ClusterUserName      string                       `yaml:"ClusterUser"`
-	PublicKey            string                       `yaml:"PublicKey"`
-	PrivateKey           string                       `yaml:"PrivateKey"`
-	Docker               map[string]map[string]string `yaml:"Docker"`
-	Alertmanager         string                       `yaml:"Alertmanager"`
-	NodeExporter         string                       `yaml:"NodeExporter"`
-	Prometheus           string                       `yaml:"Prometheus"`
-	Grafana              string                       `yaml:"Grafana"`
-	Traefik              string                       `yaml:"Traefik"`
-	Cadvisor             string                       `yaml:"Cadvisor"`
-	Consul               string                       `yaml:"Consul"`
-	ACMEEnabled          bool                         `yaml:"ACMEEnabled"`
-	Domain               string                       `yaml:"Domain"`
-	Email                string                       `yaml:"Email"`
-	GrafanaUser          string                       `yaml:"GrafanaUser"`
-	PrometheusUser       string                       `yaml:"PrometheusUser"`
-	TraefikUser          string                       `yaml:"TraefikUser"`
-	ChannelName          string                       `yaml:"ChannelName"`
-	AlertmanagerUser     string                       `yaml:"AlertmanagerUser"`
-	Elasticsearch        string                       `yaml:"Elasticsearch"`
-	Filebeat             string                       `yaml:"Filebeat"`
-	Kibana               string                       `yaml:"Kibana"`
-	Logstash             string                       `yaml:"Logstash"`
-	Curator              string                       `yaml:"Curator"`
-	EncryptSwarmNetworks bool                         `yaml:"EncryptSwarmNetworks"`
-	TraefikPassword      string
-	WebhookURL           string
-	GrafanaPassword      string
-	KibanaCreds          string
-	PrometheusPassword   string
+	OrganizationName      string                       `yaml:"Organization"`
+	ClusterName           string                       `yaml:"Cluster"`
+	RootUserName          string                       `yaml:"RootUser"`
+	ClusterUserName       string                       `yaml:"ClusterUser"`
+	PublicKey             string                       `yaml:"PublicKey"`
+	PrivateKey            string                       `yaml:"PrivateKey"`
+	Docker                map[string]map[string]string `yaml:"Docker"`
+	Alertmanager          string                       `yaml:"Alertmanager"`
+	NodeExporter          string                       `yaml:"NodeExporter"`
+	Prometheus            string                       `yaml:"Prometheus"`
+	Grafana               string                       `yaml:"Grafana"`
+	Traefik               string                       `yaml:"Traefik"`
+	Cadvisor              string                       `yaml:"Cadvisor"`
+	Consul                string                       `yaml:"Consul"`
+	ACMEEnabled           bool                         `yaml:"ACMEEnabled"`
+	Domain                string                       `yaml:"Domain"`
+	Email                 string                       `yaml:"Email"`
+	GrafanaUser           string                       `yaml:"GrafanaUser"`
+	PrometheusUser        string                       `yaml:"PrometheusUser"`
+	TraefikUser           string                       `yaml:"TraefikUser"`
+	ChannelName           string                       `yaml:"ChannelName"`
+	AlertmanagerUser      string                       `yaml:"AlertmanagerUser"`
+	Elasticsearch         string                       `yaml:"Elasticsearch"`
+	Filebeat              string                       `yaml:"Filebeat"`
+	Kibana                string                       `yaml:"Kibana"`
+	Logstash              string                       `yaml:"Logstash"`
+	Curator               string                       `yaml:"Curator"`
+	EncryptSwarmNetworks  bool                         `yaml:"EncryptSwarmNetworks"`
+	WebhookURL            string
+	GrafanaPassword       string
+	PrometheusBasicAuth   string
+	AlertManagerBasicAuth string
+	TraefikBasicAuth      string
+	KibanaCreds           string
 }
 
 var verbose bool
@@ -87,8 +88,12 @@ func Execute() {
 	swarmpromCmd.Flags().BoolVarP(&argUpgradeSwarmprom, "update", "u", false, "Update alert manager configuration")
 	swarmpromCmd.Flags().BoolVarP(&argNoAlerts, "noalerts", "n", false, "Configure no push alerts in Prometheus Alertmamnager")
 	swarmpromCmd.Flags().StringVarP(&argSlackWebhookURL, "slackWebhookUrl", "s", "", "Configure Slack alerts by specifying Webhook URL")
+	swarmpromCmd.Flags().StringVarP(&argGrafanaPass, "grafanaPass", "g", "", "Specify password for Grafana web-ui")
+	swarmpromCmd.Flags().StringVarP(&argPrometheusPass, "prometheusPass", "p", "", "Specify password for Prometheus web-ui")
+	swarmpromCmd.Flags().StringVarP(&argAlertmanagerPass, "alertmanagerPass", "a", "", "Specify password for Alertmanager web-ui")
 
 	rootCmd.AddCommand(traefikCmd)
+	traefikCmd.Flags().StringVarP(&argTraefikPass, "password", "p", "", "Specify password for Traefik dashboard web-ui")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

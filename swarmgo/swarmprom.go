@@ -34,6 +34,9 @@ const (
 
 var (
 	argSlackWebhookURL  string
+	argGrafanaPass      string
+	argPrometheusPass   string
+	argAlertmanagerPass string
 	argNoAlerts         bool
 	argUpgradeSwarmprom bool
 )
@@ -124,17 +127,36 @@ func writeAlertManagerConf(client *SSHClient, host string, clusterFile *clusterF
 
 func deploySwarmprom(clusterFile *clusterFile, firstEntry *entry) {
 	client := getSSHClient(clusterFile)
-	clusterFile.GrafanaPassword = readPasswordPrompt("Grafana admin user password")
+
+	if len(argGrafanaPass) == 0 {
+		argGrafanaPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Grafana web-ui)", clusterFile.GrafanaUser))
+	}
+	if len(argAlertmanagerPass) == 0 {
+		argAlertmanagerPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Alertmanager web-ui)", clusterFile.AlertmanagerUser))
+	}
+	if len(argPrometheusPass) == 0 {
+		argPrometheusPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Prometheus web-ui)", clusterFile.PrometheusUser))
+	}
+
+	clusterFile.GrafanaPassword = argGrafanaPass
+
 	getSlackWebhookURL(clusterFile)
-	//TODO don't forget to implement passwords for prometheus and traefik
+
 	host := firstEntry.node.Host
 	forCopy := infoForCopy{
 		host, client,
 	}
 	gc.Info("Trying to install dos2unix")
 	client.ExecOrExit(host, "sudo apt-get install dos2unix")
-	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(getSourcesDir(), swarmpromFolder)))
+	gc.Info("Trying to install htpasswd")
+	client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
 
+	clusterFile.PrometheusBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.PrometheusUser, argPrometheusPass))
+	clusterFile.PrometheusBasicAuth = strings.ReplaceAll(clusterFile.PrometheusBasicAuth, "$", "\\$\\$")
+	clusterFile.AlertManagerBasicAuth = client.ExecOrExit(host, fmt.Sprintf("echo $(htpasswd -nbB %s \"%s\")", clusterFile.AlertmanagerUser, argAlertmanagerPass))
+	clusterFile.AlertManagerBasicAuth = strings.ReplaceAll(clusterFile.AlertManagerBasicAuth, "$", "\\$\\$")
+
+	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(getSourcesDir(), swarmpromFolder)))
 	templateAndCopy(client, host, swarmpromComposeFileName, "~/"+swarmpromComposeFileName, clusterFile)
 	writeAlertManagerConf(client, host, clusterFile)
 

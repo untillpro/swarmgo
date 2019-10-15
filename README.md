@@ -37,15 +37,17 @@ Steps:
 - Run `swarmgo traefik` to deploy traefik
 - Run `swarmgo swarmprom` to install prometheus, alertmanager, cadvisor and grafana
   - Use `-n` option to disable alerts
-  - Use `-s WEBHOOK_URL` to configure Slack alerts for specified webhook URL
+  - Use `-s webhook_url` to configure Slack alerts for specified webhook URL
   - Use `-u` option to update alertmanager settings, can be combined with `-n` or `-s` options
-  - Grafana service will be available at https://domen/grafana
-
+  - Use `-a password` option to specify Alertmanager password
+  - Use `-p password` option to specify Prometheus password
+  - Use `-g password` option to specify Grafana password
 
 Services:
-- mycluster.io/traefik
-- mycluster.io/graphana
+- mycluster.io/dashboard - Traefik dashboard
+- mycluster.io/grafana
 - mycluster.io/prometheus
+- mycluster.io/alertmanager
 
 # Developer Guide
 

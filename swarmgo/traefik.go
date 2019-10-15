@@ -50,6 +50,7 @@ type managerNodes struct {
 }
 
 var encrypted = ""
+var argTraefikPass string
 
 // traefikCmd represents the traefik command
 var traefikCmd = &cobra.Command{
@@ -65,6 +66,11 @@ var traefikCmd = &cobra.Command{
 		if clusterFile.EncryptSwarmNetworks {
 			encrypted = encryptedFlag
 		}
+
+		gc.Info("Trying to install htpasswd")
+		client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
+
+		gc.Info("Creating network")
 		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" traefik")
 
 		var traefikComposeName string
@@ -164,6 +170,14 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, client *SSHClient) {
+
+	if len(argTraefikPass) == 0 {
+		argTraefikPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Traefik dashboard)", clusterFile.TraefikUser))
+	}
+
+	clusterFile.TraefikBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.TraefikUser, argTraefikPass))
+	clusterFile.TraefikBasicAuth = strings.ReplaceAll(clusterFile.TraefikBasicAuth, "$", "\\$\\$")
+
 	tmplBuffer := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
 	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" webgateway")

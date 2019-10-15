@@ -52,11 +52,14 @@ services:
     image: {{.Grafana}}
     networks:
       - webgateway
+    ports: 
+      - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER={{.GrafanaUser}}
       - GF_SECURITY_ADMIN_PASSWORD={{.GrafanaPassword}}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana:/var/lib/grafana
     configs:
@@ -76,10 +79,11 @@ services:
       mode: replicated
       replicas: 1
       labels:
-        - traefik.enable=true
-        - traefik.frontend.rule=PathPrefixStrip:/grafana
-        - traefik.port=3000
-        - traefik.docker.network=webgateway
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=PathPrefix(\`/grafana\`)" 
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"    
+        - "traefik.docker.network=webgateway"
+        - "traefik.docker.lbswarm=true"
       placement:
         constraints:
           - node.role == manager
@@ -93,11 +97,13 @@ services:
     image: {{.Alertmanager}}
     networks:
       - webgateway
+    ports: 
+      - "9093:9093"
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
       - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/alertmanager'
-      - '--web.route-prefix=/'
+      - '--web.route-prefix=/alertmanager'
       - '--log.level=debug'
     volumes:
       - alertmanager:/alertmanager
@@ -110,10 +116,14 @@ services:
       mode: replicated
       replicas: 1
       labels:
-        - traefik.enable=true
-        - traefik.frontend.rule=PathPrefixStrip:/alertmanager
-        - traefik.port=9093
-        - traefik.docker.network=webgateway
+        - "traefik.enable=true"
+        - "traefik.http.routers.alertmgr.rule=PathPrefix(\`/alertmanager\`)" 
+        - "traefik.http.services.alertmgr.loadbalancer.server.port=9093"
+        - "traefik.http.routers.alertmgr.middlewares=auth_am"
+        - "traefik.http.middlewares.auth_am.basicauth.users={{.AlertManagerBasicAuth}}"
+        - "traefik.http.middlewares.auth_am.basicauth.realm=alertmgr"
+        - "traefik.http.middlewares.auth_am.basicauth.removeheader=true"
+        - "traefik.docker.network=webgateway"
       placement:
         constraints:
           - node.role == manager
@@ -153,6 +163,8 @@ services:
     image: {{.Prometheus}}
     networks:
       - webgateway
+    ports: 
+      - "9090:9090"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
@@ -160,7 +172,7 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention=24h'
       - '--web.external-url=http{{if .ACMEEnabled}}s{{end}}://{{if .Domain}}{{.Domain}}{{else}}localhost{{end}}/prometheus'
-      - '--web.route-prefix=/'
+      - '--web.route-prefix=/prometheus'
     volumes:
       - prometheus:/prometheus
     configs:
@@ -179,9 +191,14 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        - traefik.frontend.rule=PathPrefixStrip:/prometheus
-        - traefik.port=9090
-        - traefik.docker.network=webgateway
+        - "traefik.http.routers.prometheus.rule=PathPrefix(\`/prometheus\`)" 
+        - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+        - "traefik.http.routers.prometheus.middlewares=auth_pm"
+        - "traefik.http.middlewares.auth_pm.basicauth.users={{.PrometheusBasicAuth}}"
+        - "traefik.http.middlewares.auth_pm.basicauth.removeheader=true"
+        - "traefik.http.middlewares.auth_pm.basicauth.realm=prometheus"
+        - "traefik.docker.lbswarm=true"
+        - "traefik.docker.network=webgateway"
       resources:
         limits:
           memory: 2048M
