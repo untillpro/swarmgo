@@ -79,6 +79,9 @@ func Execute() {
 	rootCmd.AddCommand(dockerCmd)
 	dockerCmd.Flags().BoolVarP(&forceUpgradeDocker, "upgrade", "u", false, "Upgrade docker to the latest version, if already installed")
 
+	rootCmd.AddCommand(labelsCmd)
+	labelsCmd.AddCommand(labelsLsCmd)
+
 	rootCmd.AddCommand(eLKCmd)
 
 	rootCmd.AddCommand(swarmCmd)

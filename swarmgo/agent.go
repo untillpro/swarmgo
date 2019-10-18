@@ -14,7 +14,7 @@ var agentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Starts ssh-agent and adds cluster key with ssh-add to current terminal session",
 	Long:  `For Shell terminals only. Use this command to input key password once and avoid typing it on further swarmgo commands in current temrinal session`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 
 		output, err := exec.Command("ssh-agent").Output()
 		gc.ExitIfError(err, "Unable to run ssh-agent")
@@ -32,11 +32,11 @@ var agentCmd = &cobra.Command{
 		gc.ExitIfFalse(FileExists(privateKeyFile), "Private key file doesn't exist: "+privateKeyFile)
 		gc.Verbose("Private Key location:", privateKeyFile)
 
-		cmd := exec.Command("env", submatch[0][1], submatch[1][1], "ssh-add", privateKeyFile)
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		gc.Verbose("Running", cmd.Path, cmd.Args)
-		err = cmd.Run()
+		ecmd := exec.Command("env", submatch[0][1], submatch[1][1], "ssh-add", privateKeyFile)
+		ecmd.Stdout = os.Stdout
+		ecmd.Stdin = os.Stdin
+		gc.Verbose("Running", ecmd.Path, ecmd.Args)
+		err = ecmd.Run()
 		gc.ExitIfError(err, "Unable to run ssh-add")
 
 		fmt.Printf(string(sshAgentOut))

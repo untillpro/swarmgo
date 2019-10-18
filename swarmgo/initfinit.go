@@ -19,13 +19,13 @@ import (
 
 var logFile *os.File
 
-type loggedRunnable func(args []string)
+type loggedRunnable func(cmd *cobra.Command, args []string)
 
 func loggedCmd(f loggedRunnable) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		initCommand(cmd.Name())
 		defer finitCommand()
-		f(args)
+		f(cmd, args)
 	}
 }
 

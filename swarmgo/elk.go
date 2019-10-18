@@ -29,7 +29,7 @@ var eLKCmd = &cobra.Command{
 	Use:   "elk",
 	Short: "Deploy ELK stack",
 	Long:  `Deploys Elasticsearch cluster with 3 nodes, Logstash replica, Filebeat on all nodes and single Kibana`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		kibanaUser := readPasswordPrompt("Kibana login")

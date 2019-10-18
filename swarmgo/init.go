@@ -12,7 +12,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize swarmgo-config",
 	Long:  `Initialize swarmgo-config.yml with list of used in project technologies and versions`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		clusterFilePath := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
 		gc.ExitIfFalse(!FileExists(clusterFilePath), "swarmgo-config.yml already created")
 

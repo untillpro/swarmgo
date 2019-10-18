@@ -50,7 +50,7 @@ var swarmpromCmd = &cobra.Command{
 	Use:   "swarmprom",
 	Short: "Create starter kit for swarm monitoring",
 	Long:  `Deploys Prometheus, WebhookURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		gc.ExitIfFalse(firstEntry.node.Traefik, "Need to deploy traefik before swarmprom deploy")

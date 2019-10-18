@@ -12,7 +12,7 @@ var keysCmd = &cobra.Command{
 	Use:   "keys",
 	Short: "Initialize keys for ssh access",
 	Long:  `Generate new keys or specify keys for ssh access configuration.`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 
 		gc.Doing("Reading config")
 

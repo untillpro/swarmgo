@@ -33,7 +33,7 @@ var dockerCmd = &cobra.Command{
 	Use:   "docker <arg1 arg2...> or not",
 	Short: "Install docker. Use -u flag to upgrade",
 	Long:  `Downloads and installs latest version of docker`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 
 		checkSSHAgent()
 		clusterFile := unmarshalClusterYml()

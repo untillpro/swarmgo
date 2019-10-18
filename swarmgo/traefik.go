@@ -57,7 +57,7 @@ var traefikCmd = &cobra.Command{
 	Use:   "traefik",
 	Short: "Install traefik with let's encrypt and consul on swarm cluster",
 	Long:  `Install traefik with let's encrypt and consul on swarm cluster`,
-	Run: loggedCmd(func(args []string) {
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodes := getNodesFromYml(getWorkingDir())
@@ -67,11 +67,17 @@ var traefikCmd = &cobra.Command{
 			encrypted = encryptedFlag
 		}
 
+		if len(argTraefikPass) == 0 {
+			argTraefikPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Traefik dashboard)", clusterFile.TraefikUser))
+		}
+
 		gc.Info("Trying to install htpasswd")
 		client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
 
 		gc.Info("Creating network")
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" traefik")
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" sys")     //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" traefik") //consul + traefik
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")     // al custom applications + traefik
 
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
@@ -170,10 +176,6 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 }
 
 func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, client *SSHClient) {
-
-	if len(argTraefikPass) == 0 {
-		argTraefikPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Traefik dashboard)", clusterFile.TraefikUser))
-	}
 
 	clusterFile.TraefikBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.TraefikUser, argTraefikPass))
 	clusterFile.TraefikBasicAuth = strings.ReplaceAll(clusterFile.TraefikBasicAuth, "$", "\\$\\$")

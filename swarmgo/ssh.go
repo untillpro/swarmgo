@@ -20,6 +20,7 @@ type SSHClient struct {
 	PrivateKeyFile        string
 	StrictHostKeyChecking bool
 	Verbose               bool
+	HideStdout            bool
 }
 
 func checkSSHAgent() {
@@ -81,6 +82,25 @@ func (c *SSHClient) cmd(cmd *exec.Cmd) (string, error) {
 	return out, nil
 }
 
+func (c *SSHClient) cmdHidden(cmd *exec.Cmd) (string, error) {
+
+	var bErr bytes.Buffer
+	cmd.Stderr = &bErr
+
+	bs, err := cmd.Output()
+
+	if err != nil {
+		stdErrStr := bErr.String()
+		if len(stdErrStr) > 0 {
+			err = errors.New(err.Error() + " / " + stdErrStr)
+		}
+		return stdErrStr, err
+	}
+
+	out := strings.TrimRight(string(bs), "\r\n")
+	return out, nil
+}
+
 func (c *SSHClient) loggedCmd(host string, cmd *exec.Cmd, maskInput, maskOutput bool) (string, error) {
 
 	if c.Verbose {
@@ -91,7 +111,14 @@ func (c *SSHClient) loggedCmd(host string, cmd *exec.Cmd, maskInput, maskOutput 
 		gc.Verbose(c.prefixed(host, loggedInput))
 	}
 
-	out, err := c.cmd(cmd)
+	var err error
+	var out string
+
+	if c.HideStdout {
+		out, err = c.cmdHidden(cmd)
+	} else {
+		out, err = c.cmd(cmd)
+	}
 
 	if c.Verbose {
 		if err != nil {
