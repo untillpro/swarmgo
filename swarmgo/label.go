@@ -20,7 +20,7 @@ import (
 
 // labelsCmd represents the labels command
 var labelsCmd = &cobra.Command{
-	Use:   "labels",
+	Use:   "label",
 	Short: "Manage swarmgo node labels",
 	Long:  `Allows viewing, adding or deleting swarmgo node labels`,
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
