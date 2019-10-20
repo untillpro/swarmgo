@@ -18,8 +18,7 @@ import (
 	gc "github.com/untillpro/gochips"
 )
 
-// labelsCmd represents the labels command
-var labelsCmd = &cobra.Command{
+var labelCmd = &cobra.Command{
 	Use:   "label",
 	Short: "Manage swarmgo node labels",
 	Long:  `Allows viewing, adding or deleting swarmgo node labels`,
@@ -29,7 +28,7 @@ var labelsCmd = &cobra.Command{
 	}),
 }
 
-var labelsLsCmd = &cobra.Command{
+var labelLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List labels of the swarmgo nodes",
 	Long:  `Allows viewing list of swarmgo nodes and its labels`,
@@ -76,5 +75,39 @@ var labelsLsCmd = &cobra.Command{
 			gc.Info(fmt.Sprintf("%-30s%-50s", hostName, labelsStr.String()))
 		}
 
+	}),
+}
+
+var labelAddCmd = &cobra.Command{
+	Use:   "add [node] [label]",
+	Short: "Adds label to node",
+	Long:  `Adds label to swarmgo node`,
+	Args:  cobra.MinimumNArgs(2),
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
+		checkSSHAgent()
+		clusterFile := unmarshalClusterYml()
+		nodesList := getNodesFromYml(getWorkingDir())
+		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
+		client := getSSHClient(clusterFile)
+		client.HideStdout = true
+		client.ExecOrExit(nodesList[0].Host, "sudo docker node update "+args[0]+" --label-add "+args[1])
+		gc.Info("ok")
+	}),
+}
+
+var labelRmCmd = &cobra.Command{
+	Use:   "rm [node] [label]",
+	Short: "Removes node label",
+	Long:  `Removes swarmgo node label`,
+	Args:  cobra.MinimumNArgs(2),
+	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
+		checkSSHAgent()
+		clusterFile := unmarshalClusterYml()
+		nodesList := getNodesFromYml(getWorkingDir())
+		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
+		client := getSSHClient(clusterFile)
+		client.HideStdout = true
+		client.ExecOrExit(nodesList[0].Host, "sudo docker node update "+args[0]+" --label-rm "+args[1])
+		gc.Info("ok")
 	}),
 }
