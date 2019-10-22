@@ -128,12 +128,12 @@ func getToken(mode, host string, client *SSHClient) (string, error) {
 }
 
 func reloadUfwAndDocker(host string, client *SSHClient) error {
-	gc.Info("Restarting ufw...")
+	logWithPrefix(host, "Restarting ufw...")
 	_, err := client.Exec(host, "sudo ufw reload")
 	if err != nil {
 		return err
 	}
-	gc.Info("Ufw restarted!")
+	logWithPrefix(host, "Ufw restarted!")
 	return nil
 }
 

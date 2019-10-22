@@ -36,7 +36,7 @@ Steps:
   - At least one manager must be configured first
 - Run `swarmgo traefik` to deploy traefik
 - Run `swarmgo label add [alias] [label]` to add node labels
-  - example: `swarmgo label add node1 prometheus` to label node for deploying Prometheus service
+  - example: `swarmgo label add node1 prometheus=true` to label node for deploying Prometheus service
 - Run `swarmgo swarmprom` to install prometheus, alertmanager, cadvisor and grafana
   - Use `-n` option to disable alerts
   - Use `-s webhook_url` to configure Slack alerts for specified webhook URL

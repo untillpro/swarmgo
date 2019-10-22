@@ -182,6 +182,7 @@ func configHostToUseKeys(user user, publicKeyFile string) error {
 	gc.ExitIfError(err, "Unable to read public key from "+publicKeyFile)
 
 	client := getSSHClientInstance(rootUserName, "")
+	client.HideStdout = false
 	_, err = client.Exec(host, "echo '"+string(scriptBytes)+"' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh "+userName+" "+generateRandomString(32)+" \""+string(pemBytes)+"\" && rm ~/setup.sh")
 	if err != nil {
 		return err

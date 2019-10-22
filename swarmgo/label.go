@@ -47,7 +47,6 @@ var labelLsCmd = &cobra.Command{
 		}
 
 		client := getSSHClient(clusterFile)
-		client.HideStdout = true // TODO: use hidden mode by default
 
 		jsonstr := client.ExecOrExit(nodesList[0].Host, cmdline.String())
 		var result []map[string]interface{}
@@ -89,7 +88,6 @@ var labelAddCmd = &cobra.Command{
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
 		client := getSSHClient(clusterFile)
-		client.HideStdout = true
 		client.ExecOrExit(nodesList[0].Host, "sudo docker node update \""+args[0]+"\" --label-add \""+args[1]+"\"")
 		gc.Info("ok")
 	}),
@@ -106,7 +104,6 @@ var labelRmCmd = &cobra.Command{
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
 		client := getSSHClient(clusterFile)
-		client.HideStdout = true
 		client.ExecOrExit(nodesList[0].Host, "sudo docker node update \""+args[0]+"\" --label-rm \""+args[1]+"\"")
 		gc.Info("ok")
 	}),

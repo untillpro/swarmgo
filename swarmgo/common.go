@@ -45,6 +45,7 @@ func getSSHClientInstance(userName, privateKeyFile string) *SSHClient {
 	client := Client(userName, privateKeyFile)
 	client.Verbose = true
 	client.StrictHostKeyChecking = false
+	client.HideStdout = true
 	return client
 }
 

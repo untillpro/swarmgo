@@ -185,10 +185,12 @@ services:
     depends_on:
       - cadvisor
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
       placement:
         constraints:
           - node.role == manager
+          - node.labels.prometheus == true
       labels:
         - traefik.enable=true
         - "traefik.http.routers.prometheus.rule=PathPrefix(\`/prometheus\`)" 
