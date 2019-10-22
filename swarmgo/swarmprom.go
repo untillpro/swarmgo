@@ -50,13 +50,13 @@ type infoForCopy struct {
 }
 
 var swarmpromCmd = &cobra.Command{
-	Use:   "swarmprom",
-	Short: "Create starter kit for swarm monitoring",
-	Long:  `Deploys Prometheus, WebhookURL, cAdvisor, Node Exporter, Alert Manager and Unsee to the current swarm`,
+	Use:   "mon",
+	Short: "Adds starter kit for swarm monitoring",
+	Long:  `Deploys Prometheus, cAdvisor, Node Exporter, Alert Manager and Grafana to the current swarm`,
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
-		gc.ExitIfFalse(firstEntry.node.Traefik, "Need to deploy traefik before swarmprom deploy")
+		gc.ExitIfFalse(firstEntry.node.Traefik, "Need to deploy traefik before deploy")
 
 		if argUpgradeSwarmprom {
 			updateAlertMgrCfg(clusterFile, firstEntry)
