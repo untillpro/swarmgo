@@ -38,6 +38,7 @@ Steps:
 - Run `swarmgo label add [alias] [label]` to add node labels
   - example: `swarmgo label add node1 prometheus=true` to label node for deploying Prometheus service
 - Run `swarmgo mon` to install prometheus, alertmanager, cadvisor and grafana
+  - There must be one node with label `prometheus=true`, use `swarmgo label add` to add it
   - Use `-n` option to disable alerts
   - Use `-s webhook_url` to configure Slack alerts for specified webhook URL
   - Use `-u` option to update alertmanager settings, can be combined with `-n` or `-s` options
