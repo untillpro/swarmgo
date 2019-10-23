@@ -10,8 +10,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - webgateway
-      - traefik
+      - mon
+      - consul
     ports:
       - "80:80"
       - "443:443"
@@ -25,7 +25,7 @@ services:
         - traefik.backend=traefik
         - traefik.frontend.rule=PathPrefixStrip:/traefik
         - traefik.port=8080
-        - traefik.docker.network=webgateway
+        - traefik.docker.network=mon
       update_config:
         parallelism: 1
         delay: 10s
@@ -33,7 +33,7 @@ services:
         condition: on-failure
 
 networks:
-  traefik:
+  consul:
     external: true
-  webgateway:
+  mon:
     external: true

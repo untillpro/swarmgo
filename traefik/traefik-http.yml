@@ -12,7 +12,7 @@ services:
       - --api.dashboard=true
       - --log.level=DEBUG
     networks:
-      - webgateway
+      - mon
     ports:
       - "80:80"
     deploy:
@@ -25,7 +25,7 @@ services:
         - "traefik.http.routers.traefik.middlewares=auth"
         - "traefik.http.middlewares.auth.basicauth.users={{.TraefikBasicAuth}}"
         - "traefik.http.middlewares.auth.basicauth.realm=dashboard"
-        - "traefik.docker.network=webgateway"
+        - "traefik.docker.network=mon"
         - "traefik.docker.lbswarm=true"
       placement:
         constraints:
@@ -35,5 +35,5 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
-  webgateway:
+  mon:
     external: true

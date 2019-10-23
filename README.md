@@ -62,8 +62,9 @@ Services:
 # Under the Hood
 
 Networks:
-- traefik: traefik + consul
-- webgateway: all services which should be available from outside, such services must have a label `traefik.enabled=true`
+- consul: traefik + consul
+- mon: all monitoring services + traefik
+- app: 3rd party applications
 
 # Logs
 

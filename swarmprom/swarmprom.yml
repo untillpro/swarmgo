@@ -32,7 +32,7 @@ services:
   cadvisor:
     image: {{.Cadvisor}}
     networks:
-      - webgateway
+      - mon
     command: -docker_only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -51,7 +51,7 @@ services:
   grafana:
     image: {{.Grafana}}
     networks:
-      - webgateway
+      - mon
     ports: 
       - "3000:3000"
     environment:
@@ -82,7 +82,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=PathPrefix(\`/grafana\`)" 
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"    
-        - "traefik.docker.network=webgateway"
+        - "traefik.docker.network=mon"
         - "traefik.docker.lbswarm=true"
       placement:
         constraints:
@@ -96,7 +96,7 @@ services:
   alertmanager:
     image: {{.Alertmanager}}
     networks:
-      - webgateway
+      - mon
     ports: 
       - "9093:9093"
     command:
@@ -123,7 +123,7 @@ services:
         - "traefik.http.middlewares.auth_am.basicauth.users={{.AlertManagerBasicAuth}}"
         - "traefik.http.middlewares.auth_am.basicauth.realm=alertmgr"
         - "traefik.http.middlewares.auth_am.basicauth.removeheader=true"
-        - "traefik.docker.network=webgateway"
+        - "traefik.docker.network=mon"
       placement:
         constraints:
           - node.role == manager
@@ -136,7 +136,7 @@ services:
   node-exporter:
     image: {{.NodeExporter}}
     networks:
-      - webgateway
+      - mon
     environment:
       - NODE_ID={{"{{"}}.Node.Hostname{{"}}"}}
     volumes:
@@ -162,7 +162,7 @@ services:
   prometheus:
     image: {{.Prometheus}}
     networks:
-      - webgateway
+      - mon
     ports: 
       - "9090:9090"
     command:
@@ -199,7 +199,7 @@ services:
         - "traefik.http.middlewares.auth_pm.basicauth.removeheader=true"
         - "traefik.http.middlewares.auth_pm.basicauth.realm=prometheus"
         - "traefik.docker.lbswarm=true"
-        - "traefik.docker.network=webgateway"
+        - "traefik.docker.network=mon"
       resources:
         limits:
           memory: 2048M
@@ -207,5 +207,5 @@ services:
           memory: 128M
 
 networks:
-  webgateway:
+  mon:
     external: true

@@ -35,7 +35,7 @@ var labelLsCmd = &cobra.Command{
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 
 		checkSSHAgent()
-		clusterFile := unmarshalClusterYml()
+		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
 
@@ -48,7 +48,7 @@ var labelLsCmd = &cobra.Command{
 
 		client := getSSHClient(clusterFile)
 
-		jsonstr := client.ExecOrExit(nodesList[0].Host, cmdline.String())
+		jsonstr := client.ExecOrExit(firstEntry.node.Host, cmdline.String())
 		var result []map[string]interface{}
 		json.Unmarshal([]byte(jsonstr), &result)
 		gc.ExitIfFalse(len(result) == len(nodesList), "Unexpected number of returned nodes")
@@ -84,11 +84,11 @@ var labelAddCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
-		clusterFile := unmarshalClusterYml()
+		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
 		client := getSSHClient(clusterFile)
-		client.ExecOrExit(nodesList[0].Host, "sudo docker node update \""+args[0]+"\" --label-add \""+args[1]+"\"")
+		client.ExecOrExit(firstEntry.node.Host, "sudo docker node update \""+args[0]+"\" --label-add \""+args[1]+"\"")
 		gc.Info("ok")
 	}),
 }
@@ -100,11 +100,11 @@ var labelRmCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
-		clusterFile := unmarshalClusterYml()
+		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
 		client := getSSHClient(clusterFile)
-		client.ExecOrExit(nodesList[0].Host, "sudo docker node update \""+args[0]+"\" --label-rm \""+args[1]+"\"")
+		client.ExecOrExit(firstEntry.node.Host, "sudo docker node update \""+args[0]+"\" --label-rm \""+args[1]+"\"")
 		gc.Info("ok")
 	}),
 }

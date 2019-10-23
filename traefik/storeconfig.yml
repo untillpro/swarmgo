@@ -30,7 +30,7 @@ services:
       - "--consul.prefix=traefik"
       - "--maxidleconnsperhost=0"
     networks:
-      - traefik
+      - consul
     deploy:
       restart_policy:
         condition: on-failure
@@ -39,5 +39,5 @@ services:
           - node.role == manager
 
 networks:
-  traefik:
+  consul:
     external: true

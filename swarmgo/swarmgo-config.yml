@@ -59,7 +59,7 @@ Curator: kindratte/curator:5.4
 #
 #
 
-# If true docker networks ("traefik" and "webgateway") creates with flag --opt encrypted and encrypts traffic between nodes
+# If true docker networks ("consul" and "mon") creates with flag --opt encrypted and encrypts traffic between nodes
 
 EncryptSwarmNetworks: true
 

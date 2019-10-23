@@ -74,10 +74,10 @@ var traefikCmd = &cobra.Command{
 		gc.Info("Trying to install htpasswd")
 		client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
 
-		gc.Info("Creating network")
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" sys")     //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" traefik") //consul + traefik
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")     // al custom applications + traefik
+		gc.Info("Creating networks")
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon")    //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")    // al custom applications + traefik
 
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {
@@ -182,8 +182,7 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, cl
 
 	tmplBuffer := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikComposeName), clusterFile)
 	gc.Info("traefik.yml modified")
-	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" webgateway")
-	gc.Info("webgateway networks created")
+
 	client.ExecOrExit(host, "cat > ~/"+traefikFolderName+"traefik.yml << EOF\n\n"+tmplBuffer.String()+"\nEOF")
 	client.ExecOrExit(host, "sudo docker stack deploy -c "+traefikFolderName+"traefik.yml traefik")
 }
