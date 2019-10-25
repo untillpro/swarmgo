@@ -28,6 +28,7 @@ type clusterFile struct {
 	Prometheus            string                       `yaml:"Prometheus"`
 	Grafana               string                       `yaml:"Grafana"`
 	Traefik               string                       `yaml:"Traefik"`
+	Socat                 string                       `yaml:"Socat"`
 	Cadvisor              string                       `yaml:"Cadvisor"`
 	Consul                string                       `yaml:"Consul"`
 	ACMEEnabled           bool                         `yaml:"ACMEEnabled"`

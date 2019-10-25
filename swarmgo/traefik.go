@@ -24,6 +24,7 @@ import (
 
 const (
 	encryptedFlag                 = " --opt encrypted"
+	traefikNodeLabel              = "traefik"
 	traefikFolderName             = "traefik/"
 	consulFolderName              = traefikFolderName + "consul/"
 	traefikComposeFileName        = traefikFolderName + "traefik-consul.yml"
@@ -60,6 +61,7 @@ var traefikCmd = &cobra.Command{
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
+		checkSwarmNodeLabelTrue(clusterFile, firstEntry, traefikNodeLabel, true)
 		nodes := getNodesFromYml(getWorkingDir())
 		host := firstEntry.node.Host
 		client := getSSHClient(clusterFile)
@@ -78,6 +80,7 @@ var traefikCmd = &cobra.Command{
 		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon")    //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
 		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
 		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")    // al custom applications + traefik
+		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat")  // network traffic between traefik and docker socket on a manager node
 
 		var traefikComposeName string
 		if clusterFile.ACMEEnabled {

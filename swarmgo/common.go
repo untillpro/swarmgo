@@ -315,3 +315,15 @@ func ParseDockerVersion(stdout string) string {
 	return ""
 
 }
+
+func checkSwarmNodeLabelTrue(clusterFile *clusterFile, firstEntry *entry, label string, onlyOne bool) {
+	client := getSSHClient(clusterFile)
+	g := client.ExecOrExit(firstEntry.node.Host,
+		"sudo docker node ls -q | xargs sudo docker node inspect   -f '{{ .Spec.Labels }}' | grep -c "+label+":true || true")
+	count, err := strconv.ParseInt(g, 10, 32)
+	gc.ExitIfError(err, "Unexpected output from command", g)
+	gc.ExitIfFalse(count > 0, "Node labeled as ["+label+"=true] not found! Assign node label using \"swarmgo label add [NODE] "+label+"=true\" command.")
+	if onlyOne {
+		gc.ExitIfFalse(count == 1, "Multiple nodes labeled as ["+label+"] found! There must be only one node for "+label+".")
+	}
+}

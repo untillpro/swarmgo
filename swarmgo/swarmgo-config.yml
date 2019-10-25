@@ -52,6 +52,7 @@ Filebeat: kindratte/filebeat:6.5.4
 Kibana: docker.elastic.co/kibana/kibana-oss:6.5.4
 Logstash: docker.elastic.co/logstash/logstash-oss:6.5.4
 Curator: kindratte/curator:5.4
+Socat: alpine/socat:1.7.3.3-r1
 
 # ************************************************************
 #

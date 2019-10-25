@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -128,19 +127,9 @@ func writeAlertManagerConf(client *SSHClient, host string, clusterFile *clusterF
 	templateAndCopy(client, host, alertMgrSrcCfg, "~/"+alertmanagerTargetConfigPath, clusterFile)
 }
 
-func checkPrometheusLabel(clusterFile *clusterFile, firstEntry *entry) {
-	client := getSSHClient(clusterFile)
-	g := client.ExecOrExit(firstEntry.node.Host,
-		"sudo docker node ls -q | xargs sudo docker node inspect   -f '{{ .Spec.Labels }}' | grep -c "+prometheusLabel+":true || true")
-	count, err := strconv.ParseInt(g, 10, 32)
-	gc.ExitIfError(err, "Unexpected output from command", g)
-	gc.ExitIfFalse(count > 0, "Node labeled as [prometheus=true] not found! Assign node label using \"swarmgo label add [NODE] prometheus=true\" command.")
-	gc.ExitIfFalse(count == 1, "Multiple nodes labeled as [prometheus] found! There must be only one node for prometheus.")
-}
-
 func deploySwarmprom(clusterFile *clusterFile, firstEntry *entry) {
 	client := getSSHClient(clusterFile)
-	checkPrometheusLabel(clusterFile, firstEntry)
+	checkSwarmNodeLabelTrue(clusterFile, firstEntry, prometheusLabel, true)
 
 	if len(argGrafanaPass) == 0 {
 		argGrafanaPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Grafana web-ui)", clusterFile.GrafanaUser))

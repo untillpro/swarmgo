@@ -66,6 +66,7 @@ Networks:
 - consul: traefik + consul
 - mon: all monitoring services + traefik
 - app: 3rd party applications
+- socat: providesaccess to Docker socket from other nodes, required for running Traefik on worker nodes
 
 # Logs
 

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
@@ -28,6 +29,11 @@ var labelCmd = &cobra.Command{
 	}),
 }
 
+type nodeLine struct {
+	node   string
+	labels string
+}
+
 var labelLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List labels of the swarmgo nodes",
@@ -38,6 +44,7 @@ var labelLsCmd = &cobra.Command{
 		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
 		nodesList := getNodesFromYml(getWorkingDir())
 		gc.ExitIfFalse(len(nodesList) > 0, "No nodes found in nodes.yml")
+		gc.ExitIfFalse(firstEntry != nil, "No manager node found!")
 
 		var cmdline bytes.Buffer
 		cmdline.WriteString("sudo docker node inspect")
@@ -53,12 +60,14 @@ var labelLsCmd = &cobra.Command{
 		json.Unmarshal([]byte(jsonstr), &result)
 		gc.ExitIfFalse(len(result) == len(nodesList), "Unexpected number of returned nodes")
 
-		gc.Info(fmt.Sprintf("%-30s%-50s", "NODE", "LABELS"))
-		for _, n := range result {
+		nodesLines := make([]nodeLine, len(result))
+		maxLen := 1
+		for i, n := range result {
 			spec := n["Spec"].(map[string]interface{})
 			description := n["Description"].(map[string]interface{})
 			labels := spec["Labels"].(map[string]interface{})
 			hostName := description["Hostname"].(string)
+			role := spec["Role"].(string)
 			var labelsStr bytes.Buffer
 			for k, v := range labels {
 				if labelsStr.Len() > 0 {
@@ -71,7 +80,19 @@ var labelLsCmd = &cobra.Command{
 					labelsStr.WriteString(value)
 				}
 			}
-			gc.Info(fmt.Sprintf("%-30s%-50s", hostName, labelsStr.String()))
+			line := nodeLine{
+				node:   hostName + " (" + role + ")",
+				labels: labelsStr.String(),
+			}
+			nodesLines[i] = line
+			if len(line.node) > maxLen {
+				maxLen = len(line.node)
+			}
+		}
+
+		gc.Info(fmt.Sprintf("%-"+strconv.Itoa(maxLen+6)+"s%-50s", "NODE", "LABELS"))
+		for _, line := range nodesLines {
+			gc.Info(fmt.Sprintf("%-"+strconv.Itoa(maxLen+6)+"s%-50s", line.node, line.labels))
 		}
 
 	}),

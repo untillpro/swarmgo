@@ -218,6 +218,10 @@ func configUfwToWorkInSwarmMode(host string, client *SSHClient) error {
 			cmd:   "sudo ufw allow 4789/udp",
 			title: "Adding ufw rule 4789/udp",
 		},
+		SSHCommand{
+			cmd:   "sudo ufw allow proto esp from any",
+			title: "Adding ufw rule for ESP proto",
+		},
 	}
 
 	err := sshKeyAuthCmds(host, client, commands)

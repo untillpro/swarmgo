@@ -1,6 +1,17 @@
 version: '3'
 
 services:
+  socat:
+    image: {{.Socat}}
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - socat
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager 
   traefik:
     image: {{.Traefik}}
     command:
@@ -8,15 +19,16 @@ services:
       - --providers.docker.exposedbydefault=false
       - --providers.docker.swarmMode
       - --providers.docker.watch
+      - --providers.docker.endpoint=tcp://socat:2375
       - --api=true
       - --api.dashboard=true
-      - --log.level=DEBUG
+      - --log.level=ERROR
     networks:
       - mon
+      - socat
     ports:
-      - "80:80"
+      - "80:80"      
     deploy:
-      mode: global
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.traefik.rule=PathPrefix(\`/api\`) || PathPrefix(\`/dashboard\`)" 
@@ -29,11 +41,10 @@ services:
         - "traefik.docker.lbswarm=true"
       placement:
         constraints:
-          - node.role == manager
-
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+          - node.labels.traefik == true
 
 networks:
   mon:
+    external: true
+  socat:
     external: true
