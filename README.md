@@ -26,6 +26,7 @@ Steps:
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
   - Node will be added to `nodes` file
+  - Use `swarmgo add -p password` option to specify root password
   - Use `swarmgo add -s` option when user specified as `ClusterUser` in `swarmgo-config.yml` already exists and SSH access is configured for on nodes being added. 
 - Run `swarmgo docker`
   - Install docker to all nodes which do not have docker installed yet (ref. `nodes.yml`)
