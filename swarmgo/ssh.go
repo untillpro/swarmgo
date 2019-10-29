@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/kballard/go-shellquote"
@@ -21,6 +24,8 @@ type SSHClient struct {
 	StrictHostKeyChecking bool
 	Verbose               bool
 	HideStdout            bool
+	Password              string
+	TempDir               string
 }
 
 func checkSSHAgent() {
@@ -162,7 +167,35 @@ func (c *SSHClient) Exec(host string, command string) (string, error) {
 	}
 	command, maskInput, maskOutput := c.isMasked(command)
 	args = append(args, command)
-	cmd := exec.Command("ssh", args[:]...)
+	var cmd *exec.Cmd
+	if len(c.Password) > 0 {
+		if runtime.GOOS == "windows" {
+
+			tmp := filepath.Join(c.TempDir, fmt.Sprintf("%s@%s-cmd", c.User, host))
+			ioutil.WriteFile(tmp, []byte(command), os.ModePerm) // write command(s) to file
+
+			argsPas := make([]string, 0)
+			argsPas = append(argsPas, "-batch")
+			argsPas = append(argsPas, "-no-antispoof") // TODO: check this option
+			argsPas = append(argsPas, "-ssh")
+			argsPas = append(argsPas, "-pw")
+			argsPas = append(argsPas, c.Password)
+			argsPas = append(argsPas, "-m")
+			argsPas = append(argsPas, tmp)
+			argsPas = append(argsPas, fmt.Sprintf("%s@%s", c.User, host))
+
+			cmd = exec.Command("plink", argsPas[:]...)
+		} else {
+			argsPas := make([]string, 0) // TODO: test on non-Windows platform
+			argsPas = append(argsPas, "-p"+c.Password)
+			argsPas = append(argsPas, "ssh")
+			argsPas = append(argsPas, args...)
+			cmd = exec.Command("sshpass", argsPas[:]...)
+		}
+	} else {
+		cmd = exec.Command("ssh", args[:]...)
+	}
+
 	return c.loggedCmd(host, cmd, maskInput, maskOutput)
 }
 
@@ -235,24 +268,3 @@ func (c *SSHClient) copy(host string, size int64, mode os.FileMode, fileName str
 
 	return <-errors
 }
-
-/*
-func sshKeyAuth(host string, access SSHKeyAccess, command string) (string, error) {
-	command, maskInput, maskOutput := isMaskedCmd(command)
-	cmd := exec.Command("ssh", access.user+"@"+host, "-o StrictHostKeyChecking=no", "-i", access.privateKeyFile, command)
-	return loggedSSHCmd(host, access.user, cmd, maskInput, maskOutput)
-}
-
-
-func sshKeyAuthOrExit(host string, access SSHKeyAccess, command string) string {
-	out, err := sshKeyAuth(host, access, command)
-	gc.ExitIfError(err)
-	return out
-}
-
-func sshPlainAuth(host, user, command string) (string, error) {
-	command, maskInput, maskOutput := isMaskedCmd(command)
-	cmd := exec.Command("ssh", user+"@"+host, "-o StrictHostKeyChecking=no", command)
-	return loggedSSHCmd(host, user, cmd, maskInput, maskOutput)
-}
-*/

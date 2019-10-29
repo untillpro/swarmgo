@@ -21,6 +21,7 @@ import (
 const nodesFileName = "nodes.yml"
 
 var skipSSHConfiguration bool = false
+var rootPassword string = ""
 
 type user struct {
 	host, alias, userName, rootUserName string
@@ -181,12 +182,16 @@ func configHostToUseKeys(user user, publicKeyFile string) error {
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
 	gc.ExitIfError(err, "Unable to read public key from "+publicKeyFile)
 
+	setupCmd := "echo '" + string(scriptBytes) + "' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh " + userName + " " + generateRandomString(32) + " \"" + string(pemBytes) + "\" && rm ~/setup.sh"
+
 	client := getSSHClientInstance(rootUserName, "")
 	client.HideStdout = false
-	_, err = client.Exec(host, "echo '"+string(scriptBytes)+"' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh "+userName+" "+generateRandomString(32)+" \""+string(pemBytes)+"\" && rm ~/setup.sh")
+	client.Password = rootPassword
+	_, err = client.Exec(host, setupCmd)
 	if err != nil {
 		return err
 	}
+
 	logWithPrefix(host, "Done")
 	return nil
 }

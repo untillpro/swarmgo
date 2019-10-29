@@ -76,6 +76,7 @@ func Execute() {
 
 	rootCmd.AddCommand(addNodeCmd)
 	addNodeCmd.Flags().BoolVarP(&skipSSHConfiguration, "skipssh", "s", false, "Use this option when ClusterUser already exists and SSH access is configured for on nodes being added")
+	addNodeCmd.Flags().StringVarP(&rootPassword, "rootPassword", "p", "", "Specify default password. Requires sshpass on Linux and plink on Windows")
 
 	rootCmd.AddCommand(dockerCmd)
 	dockerCmd.Flags().BoolVarP(&forceUpgradeDocker, "upgrade", "u", false, "Upgrade docker to the latest version, if already installed")

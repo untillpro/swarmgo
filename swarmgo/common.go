@@ -41,11 +41,18 @@ type SSHCommand struct {
 	title string
 }
 
+func getTempDir() string {
+	tmp := filepath.Join(getWorkingDir(), "temp")
+	gc.ExitIfError(os.MkdirAll(tmp, os.ModePerm), "Could not not create temp folder")
+	return tmp
+}
+
 func getSSHClientInstance(userName, privateKeyFile string) *SSHClient {
 	client := Client(userName, privateKeyFile)
 	client.Verbose = true
 	client.StrictHostKeyChecking = false
 	client.HideStdout = true
+	client.TempDir = getTempDir()
 	return client
 }
 
