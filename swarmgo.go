@@ -8,7 +8,7 @@
 
 package main
 
-import cli "github.com/michael-say/swarmgo/cli"
+import cli "github.com/untillpro/swarmgo/cli"
 
 func main() {
 	cli.Execute()

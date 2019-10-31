@@ -1,4 +1,4 @@
-module github.com/michael-say/swarmgo
+module github.com/untillpro/swarmgo
 
 require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
