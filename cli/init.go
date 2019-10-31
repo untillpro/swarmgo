@@ -16,7 +16,7 @@ var initCmd = &cobra.Command{
 		clusterFilePath := filepath.Join(getWorkingDir(), swarmgoConfigFileName)
 		gc.ExitIfFalse(!FileExists(clusterFilePath), "swarmgo-config.yml already created")
 
-		defaultClusterFileRelativePath := filepath.Join("swarmgo", swarmgoConfigFileName)
+		defaultClusterFileRelativePath := filepath.Join(swarmgoCliFolder, swarmgoConfigFileName)
 		gc.ExitIfFalse(FileExists(defaultClusterFileRelativePath), "You should clone swarmgo-config.yml from repo!")
 
 		clusterFile := clusterFile{

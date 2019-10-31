@@ -31,6 +31,7 @@ import (
 )
 
 const (
+	swarmgoCliFolder      = "cli"
 	swarmgoConfigFileName = "swarmgo-config.yml"
 	swarmgoConfigPerms    = 0644
 )
