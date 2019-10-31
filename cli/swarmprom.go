@@ -6,7 +6,7 @@
  *
  */
 
-package swarmgo
+package cli
 
 import (
 	"bytes"
