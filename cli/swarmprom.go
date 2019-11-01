@@ -93,6 +93,8 @@ func DeploySwarmprom(noalerts bool, slackWebhook string, grafanaPass string, pro
 	gc.Info("Installing htpasswd")
 	client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
 
+	gc.Info("Copying files to node")
+
 	clusterFile.PrometheusBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.PrometheusUser, prometheusPass))
 	clusterFile.PrometheusBasicAuth = strings.ReplaceAll(clusterFile.PrometheusBasicAuth, "$", "\\$\\$")
 	clusterFile.AlertManagerBasicAuth = client.ExecOrExit(host, fmt.Sprintf("echo $(htpasswd -nbB %s \"%s\")", clusterFile.AlertmanagerUser, alertMgrPass))
@@ -155,7 +157,7 @@ func UpgradeAlertmanagerCfg(noalerts bool, slackWebhook string) {
 func templateAndCopy(client *SSHClient, host, localFile, destFile string, clusterFile *clusterFile) {
 	appliedBuffer := executeTemplateToFile(localFile, clusterFile)
 	client.ExecOrExit(host, "cat > "+destFile+" << EOF\n\n"+appliedBuffer.String()+"\nEOF")
-	gc.Info(destFile, fmt.Sprintf("Copied and applied by template '%s'->'%s'", localFile, destFile))
+	gc.Verbose(destFile, fmt.Sprintf("Copied and applied by template '%s'->'%s'", localFile, destFile))
 }
 
 func getSlackWebhookURL(clusterFile *clusterFile, noalerts bool, slackWebhookURL string) {
@@ -210,7 +212,7 @@ func copyFileToHost(filePath string, forCopy *infoForCopy) {
 	forCopy.client.ExecOrExit(forCopy.host, "sudo chown root:root "+relativePath)
 	forCopy.client.ExecOrExit(forCopy.host, "sudo chmod 777 "+relativePath)
 	gc.ExitIfError(err)
-	gc.Info(relativePath, "copied on host")
+	gc.Verbose(relativePath, "copied on host")
 }
 
 func postTestMessageToAlertmanager(URL, channelName string) error {
