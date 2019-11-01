@@ -186,7 +186,7 @@ func (c *SSHClient) Exec(host string, command string) (string, error) {
 
 			cmd = exec.Command("plink", argsPas[:]...)
 		} else {
-			argsPas := make([]string, 0) // TODO: test on non-Windows platform
+			argsPas := make([]string, 0)
 			argsPas = append(argsPas, "-p"+c.Password)
 			argsPas = append(argsPas, "ssh")
 			argsPas = append(argsPas, args...)

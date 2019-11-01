@@ -27,6 +27,89 @@ const (
 
 var mode bool
 
+// AddToSwarm adds nodes to swarm s
+func AddToSwarm(manager bool, args []string) {
+	clusterFile := unmarshalClusterYml()
+
+	nodesFromYml := getNodesFromYml(getWorkingDir())
+	gc.ExitIfFalse(len(nodesFromYml) > 0, "Can't find nodes from nodes.yml. Add some nodes first")
+
+	nodeHostAndNode := make(map[string]node)
+	for _, value := range nodesFromYml {
+		nodeHostAndNode[value.Host] = value
+	}
+	clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
+	if clusterLeaderNode == (node{}) {
+		gc.ExitIfFalse(manager, "Use `-manager` flag to init swarm")
+		gc.ExitIfFalse(len(args) > 0, "Need to pass at least one alias to init swarm")
+	}
+	nodesWithoutSwarm := make([]node, 0, len(nodesFromYml))
+	for _, nodeFromYml := range nodesFromYml {
+		if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||
+			containsNode(clusterWorkerNodes, nodeFromYml) {
+			if contains(args, nodeFromYml.Alias) {
+				gc.Info(nodeFromYml.Alias + " already in swarm")
+			}
+			continue
+		}
+		if manager {
+			if ok := contains(args, nodeFromYml.Alias); !ok {
+				continue
+			}
+		}
+		nodesWithoutSwarm = append(nodesWithoutSwarm, nodeFromYml)
+	}
+	gc.ExitIfFalse(len(nodesWithoutSwarm) > 0, "All nodes already in swarm")
+
+	var nodeVar node
+	if clusterLeaderNode == (node{}) {
+		nodeVar, nodesWithoutSwarm = initSwarm(nodesWithoutSwarm, args,
+			clusterFile)
+		nodeHostAndNode[nodeVar.Host] = nodeVar
+		clusterLeaderNode = nodeVar
+	}
+	var channelForNodes = make(chan nodeAndError)
+	for _, currentNode := range nodesWithoutSwarm {
+		go func(nodeVar node) {
+			nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, clusterFile, manager)
+			nodeFromFunc := nodeAndError{
+				nodeFromGoroutine,
+				err,
+			}
+			channelForNodes <- nodeFromFunc
+		}(currentNode)
+	}
+	errMsgs := make([]string, 0, len(args))
+	for _, key := range nodesWithoutSwarm {
+		nodeWithPossibleError := <-channelForNodes
+		node := nodeWithPossibleError.nodeWithPossibleError
+		err := nodeWithPossibleError.err
+		if nodeWithPossibleError.err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("Host: %v, returns error: %v", node.Host,
+				err.Error()))
+		}
+		nodeHostAndNode[key.Host] = node
+	}
+	for _, errMsg := range errMsgs {
+		gc.Info(errMsg)
+	}
+	close(channelForNodes)
+	nodes := make([]node, len(nodeHostAndNode))
+	i := 0
+	for _, value := range nodeHostAndNode {
+		nodes[i] = value
+		i++
+	}
+	marshaledNode, err := yaml.Marshal(&nodes)
+	gc.ExitIfError(err)
+
+	nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
+
+	gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
+
+	gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install on some node(s)")
+}
+
 // swarmCmd represents the swarm command
 var swarmCmd = &cobra.Command{
 	Use:   "swarm -m <Alias1> <Alias2> or swarm without params (you should create one manager before doing that)",
@@ -36,89 +119,11 @@ var swarmCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		initCommand("swarm")
 		defer finitCommand()
-		checkSSHAgent()
-		clusterFile := unmarshalClusterYml()
-		// TODO mode ???
 		if mode && len(args) == 0 {
 			gc.Fatal("Need at least one node alias")
 		}
-		nodesFromYml := getNodesFromYml(getWorkingDir())
-		gc.ExitIfFalse(len(nodesFromYml) > 0, "Can't find nodes from nodes.yml. Add some nodes first")
-
-		nodeHostAndNode := make(map[string]node)
-		for _, value := range nodesFromYml {
-			nodeHostAndNode[value.Host] = value
-		}
-		clusterLeaderNode, clusterManagerNodes, clusterWorkerNodes := getHostsFromNodesGroupingBySwarmModeValue(nodesFromYml)
-		if clusterLeaderNode == (node{}) {
-			gc.ExitIfFalse(mode, "Use `-manager` flag to init swarm")
-			gc.ExitIfFalse(len(args) > 0, "Need to pass at least one alias to init swarm")
-		}
-		nodesWithoutSwarm := make([]node, 0, len(nodesFromYml))
-		for _, nodeFromYml := range nodesFromYml {
-			if nodeFromYml == clusterLeaderNode || containsNode(clusterManagerNodes, nodeFromYml) ||
-				containsNode(clusterWorkerNodes, nodeFromYml) {
-				if contains(args, nodeFromYml.Alias) {
-					gc.Info(nodeFromYml.Alias + " already in swarm")
-				}
-				continue
-			}
-			if mode {
-				if ok := contains(args, nodeFromYml.Alias); !ok {
-					continue
-				}
-			}
-			nodesWithoutSwarm = append(nodesWithoutSwarm, nodeFromYml)
-		}
-		gc.ExitIfFalse(len(nodesWithoutSwarm) > 0, "All nodes already in swarm")
-
-		var nodeVar node
-		if clusterLeaderNode == (node{}) {
-			nodeVar, nodesWithoutSwarm = initSwarm(nodesWithoutSwarm, args,
-				clusterFile)
-			nodeHostAndNode[nodeVar.Host] = nodeVar
-			clusterLeaderNode = nodeVar
-		}
-		var channelForNodes = make(chan nodeAndError)
-		for _, currentNode := range nodesWithoutSwarm {
-			go func(nodeVar node) {
-				nodeFromGoroutine, err := joinToSwarm(nodeVar, clusterLeaderNode.Host, clusterFile)
-				nodeFromFunc := nodeAndError{
-					nodeFromGoroutine,
-					err,
-				}
-				channelForNodes <- nodeFromFunc
-			}(currentNode)
-		}
-		errMsgs := make([]string, 0, len(args))
-		for _, key := range nodesWithoutSwarm {
-			nodeWithPossibleError := <-channelForNodes
-			node := nodeWithPossibleError.nodeWithPossibleError
-			err := nodeWithPossibleError.err
-			if nodeWithPossibleError.err != nil {
-				errMsgs = append(errMsgs, fmt.Sprintf("Host: %v, returns error: %v", node.Host,
-					err.Error()))
-			}
-			nodeHostAndNode[key.Host] = node
-		}
-		for _, errMsg := range errMsgs {
-			gc.Info(errMsg)
-		}
-		close(channelForNodes)
-		nodes := make([]node, len(nodeHostAndNode))
-		i := 0
-		for _, value := range nodeHostAndNode {
-			nodes[i] = value
-			i++
-		}
-		marshaledNode, err := yaml.Marshal(&nodes)
-		gc.ExitIfError(err)
-
-		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
-
-		gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
-
-		gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install on some node(s)")
+		checkSSHAgent()
+		AddToSwarm(mode, args)
 	},
 }
 
@@ -233,7 +238,7 @@ func configUfwToWorkInSwarmMode(host string, client *SSHClient) error {
 	return nil
 }
 
-func joinToSwarm(node node, leaderHost string, file *clusterFile) (node, error) {
+func joinToSwarm(node node, leaderHost string, file *clusterFile, mgr bool) (node, error) {
 
 	client := getSSHClient(file)
 
@@ -242,7 +247,7 @@ func joinToSwarm(node node, leaderHost string, file *clusterFile) (node, error) 
 		return node, err
 	}
 	var token string
-	if mode {
+	if mgr {
 		_, err = client.Exec(node.Host, "sudo ufw allow 2377/tcp")
 		if err != nil {
 			return node, err

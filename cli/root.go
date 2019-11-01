@@ -74,9 +74,15 @@ func Execute() {
 
 	rootCmd.AddCommand(agentCmd)
 
+	rootCmd.AddCommand(imluckyCmd)
+	imluckyCmd.Flags().BoolVarP(&luckyNoAlerts, "no-alerts", "n", false, "Configure no push alerts in Prometheus Alertmamnager")
+	imluckyCmd.Flags().StringVarP(&luckySlackWebhookURL, "slack-webhook-url", "s", "", "Configure Slack alerts by specifying Webhook URL")
+	imluckyCmd.Flags().StringVarP(&luckyMonPassword, "mon-password", "m", "", "Specify password for monitoring serices ui: Traefik dashboard, Grafana, Alertmanager, Prometheus")
+	imluckyCmd.Flags().StringVarP(&luckyRootPassword, "password", "p", "", "Specify root password (password access will be disabled)")
+
 	rootCmd.AddCommand(addNodeCmd)
-	addNodeCmd.Flags().BoolVarP(&skipSSHConfiguration, "skipssh", "s", false, "Use this option when ClusterUser already exists and SSH access is configured for on nodes being added")
-	addNodeCmd.Flags().StringVarP(&rootPassword, "rootPassword", "p", "", "Specify default password. Requires sshpass on Linux and plink on Windows")
+	addNodeCmd.Flags().BoolVarP(&skipSSHConfiguration, "skip-ssh", "s", false, "Use this option when ClusterUser already exists and SSH access is configured for on nodes being added")
+	addNodeCmd.Flags().StringVarP(&argRootPassword, "password", "p", "", "Specify default password. Requires sshpass on Linux and plink on Windows")
 
 	rootCmd.AddCommand(dockerCmd)
 	dockerCmd.Flags().BoolVarP(&forceUpgradeDocker, "upgrade", "u", false, "Upgrade docker to the latest version, if already installed")
@@ -94,10 +100,10 @@ func Execute() {
 	rootCmd.AddCommand(swarmpromCmd)
 	swarmpromCmd.Flags().BoolVarP(&argUpgradeSwarmprom, "update", "u", false, "Update alert manager configuration")
 	swarmpromCmd.Flags().BoolVarP(&argNoAlerts, "noalerts", "n", false, "Configure no push alerts in Prometheus Alertmamnager")
-	swarmpromCmd.Flags().StringVarP(&argSlackWebhookURL, "slackWebhookUrl", "s", "", "Configure Slack alerts by specifying Webhook URL")
-	swarmpromCmd.Flags().StringVarP(&argGrafanaPass, "grafanaPass", "g", "", "Specify password for Grafana web-ui")
-	swarmpromCmd.Flags().StringVarP(&argPrometheusPass, "prometheusPass", "p", "", "Specify password for Prometheus web-ui")
-	swarmpromCmd.Flags().StringVarP(&argAlertmanagerPass, "alertmanagerPass", "a", "", "Specify password for Alertmanager web-ui")
+	swarmpromCmd.Flags().StringVarP(&argSlackWebhookURL, "slack-webhook-url", "s", "", "Configure Slack alerts by specifying Webhook URL")
+	swarmpromCmd.Flags().StringVarP(&argGrafanaPass, "grafana-password", "g", "", "Specify password for Grafana web-ui")
+	swarmpromCmd.Flags().StringVarP(&argPrometheusPass, "prometheus-password", "p", "", "Specify password for Prometheus web-ui")
+	swarmpromCmd.Flags().StringVarP(&argAlertmanagerPass, "alertmanager-password", "a", "", "Specify password for Alertmanager web-ui")
 
 	rootCmd.AddCommand(traefikCmd)
 	traefikCmd.Flags().StringVarP(&argTraefikPass, "password", "p", "", "Specify password for Traefik dashboard web-ui")

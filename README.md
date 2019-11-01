@@ -22,6 +22,19 @@ Steps:
   - Keys are kept in `nodes/swarmgo-config.yml` 
 - Run ``eval `swarmgo agent` ``
   - Command starts `ssh-agent` enabling single sign-on in the current terminal session
+- Run `swarmgo imlucky IP1 [IP2] [IP3]` to build cluster automatically, with settings assigned automatically
+  - Nodes will be added with aliases node1, node2, node3
+  - One or three nodes will be assigned as managers, depending on number of nodes
+  - Traefik and consul will be installed
+  - Use option `-p password` to specify root password (password access will be disabled)
+  - Use option `-m password` to specify password for authentication in monitoring services (Grafana, Prometheus, Traefik dashboard and Alert Manager)
+  - Use `-n` option to disable alerts from alertmanager
+  - Use `-s webhook_url` option to configure Slack alerts for specified webhook URL
+
+  Example: `swarmgo imlucky 192.168.98.10 192.168.98.11 192.168.98.12 -p "pas" -m "mon" -n`
+
+Commands to build cluster manually:
+
 - Run `swarmgo add <Alias1>=<IP1> <Alias2>=<IP2>`
   - All node are kept in `nodes.yml`
   - Note: won't be possible to use password anymore
@@ -36,6 +49,7 @@ Steps:
   - Install swarm in `worker` mode for all nodes which do not have swarm configured yet
   - At least one manager must be configured first
 - Run `swarmgo traefik` to deploy traefik
+  - Use `-p password` option to specify password for Traefik dashboard web-ui
 - Run `swarmgo label add [alias] [label]` to add node labels
   - example: `swarmgo label add node1 prometheus=true` to label node for deploying Prometheus service
 - Run `swarmgo mon` to install prometheus, alertmanager, cadvisor and grafana
@@ -59,8 +73,6 @@ Services:
   - This filder will be choosen automatically
   - This folder is ignored by git
 
-
-
 # Under the Hood
 
 Networks:
@@ -73,7 +85,6 @@ Networks:
 
 - Logs are written to `./logs` folder
 
- 
 # Misc
 
 - ssh cluster@address -i ~/.ssh/gmpw7

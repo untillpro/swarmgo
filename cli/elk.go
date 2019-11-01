@@ -50,7 +50,7 @@ func deployELKStack(clusterFile *clusterFile, firstEntry *entry) {
 		host:   firstEntry.node.Host,
 		client: client,
 	}
-	gc.Info("Trying to install dos2unix")
+	gc.Info("Installing dos2unix")
 	client.ExecOrExit(host, "sudo apt-get install dos2unix")
 	curDir := getSourcesDir()
 	copyToHost(&forCopy, filepath.ToSlash(filepath.Join(curDir, eLKPrefix)))
@@ -61,7 +61,7 @@ func deployELKStack(clusterFile *clusterFile, firstEntry *entry) {
 	gc.Info("Increasing vm.max_map_count")
 	increaseVMMaxMapCount(clusterFile)
 	gc.Info("Increased")
-	gc.Info("Trying to deploy ELK")
+	gc.Info("Deploying ELK")
 	client.ExecOrExit(host, "sudo docker stack deploy -c "+eLKComposeFileName+" elk")
 	gc.Info("ELK deployed")
 }

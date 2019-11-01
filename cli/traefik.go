@@ -53,6 +53,60 @@ type managerNodes struct {
 var encrypted = ""
 var argTraefikPass string
 
+// DeployTraefik deploys traefik to swarm nodes
+func DeployTraefik(traefikPass string) {
+	gc.Info("Deploying Traefik")
+	firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
+	checkSwarmNodeLabelTrue(clusterFile, firstEntry, traefikNodeLabel, true)
+	nodes := getNodesFromYml(getWorkingDir())
+	host := firstEntry.node.Host
+	client := getSSHClient(clusterFile)
+	if clusterFile.EncryptSwarmNetworks {
+		encrypted = encryptedFlag
+	}
+
+	if len(traefikPass) == 0 {
+		traefikPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Traefik dashboard)", clusterFile.TraefikUser))
+	}
+
+	gc.Info("Installing htpasswd")
+	client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
+
+	gc.Info("Creating networks")
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon")    //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")    // al custom applications + traefik
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat")  // network traffic between traefik and docker socket on a manager node
+
+	var traefikComposeName string
+	if clusterFile.ACMEEnabled {
+		traefikComposeName = traefikComposeFileName
+		gc.Info("Traefik in production mode will be deployed")
+		if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
+			gc.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
+		}
+		deployConsul(nodes, clusterFile, host, client)
+		storeTraefikConfigToConsul(clusterFile, host, client)
+		deployTraefikSSL(clusterFile, host, client, traefikPass)
+	} else {
+		client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
+		traefikComposeName = traefikTestComposeFileName
+		gc.Info("Traefik in test mode (in localhost) will be deployed")
+		deployTraefik(clusterFile, host, traefikComposeName, client, traefikPass)
+	}
+	for i, node := range nodes {
+		if node.SwarmMode == leader {
+			nodes[i].Traefik = true
+		}
+	}
+	marshaledNode, err := yaml.Marshal(&nodes)
+	gc.ExitIfError(err)
+	nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
+	err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
+	gc.Info("Traefik deployed")
+	gc.ExitIfError(err)
+}
+
 // traefikCmd represents the traefik command
 var traefikCmd = &cobra.Command{
 	Use:   "traefik",
@@ -60,55 +114,7 @@ var traefikCmd = &cobra.Command{
 	Long:  `Install traefik with let's encrypt and consul on swarm cluster`,
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
 		checkSSHAgent()
-		firstEntry, clusterFile := getSwarmLeaderNodeAndClusterFile()
-		checkSwarmNodeLabelTrue(clusterFile, firstEntry, traefikNodeLabel, true)
-		nodes := getNodesFromYml(getWorkingDir())
-		host := firstEntry.node.Host
-		client := getSSHClient(clusterFile)
-		if clusterFile.EncryptSwarmNetworks {
-			encrypted = encryptedFlag
-		}
-
-		if len(argTraefikPass) == 0 {
-			argTraefikPass = readPasswordPrompt(fmt.Sprintf("Specify [%s] password (access to Traefik dashboard)", clusterFile.TraefikUser))
-		}
-
-		gc.Info("Trying to install htpasswd")
-		client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
-
-		gc.Info("Creating networks")
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon")    //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")    // al custom applications + traefik
-		client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat")  // network traffic between traefik and docker socket on a manager node
-
-		var traefikComposeName string
-		if clusterFile.ACMEEnabled {
-			traefikComposeName = traefikComposeFileName
-			gc.Info("Traefik in production mode will be deployed")
-			if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
-				gc.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
-			}
-			deployConsul(nodes, clusterFile, host, client)
-			storeTraefikConfigToConsul(clusterFile, host, client)
-			deployTraefikSSL(clusterFile, host, client)
-		} else {
-			client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
-			traefikComposeName = traefikTestComposeFileName
-			gc.Info("Traefik in test mode (in localhost) will be deployed")
-			deployTraefik(clusterFile, host, traefikComposeName, client)
-		}
-		for i, node := range nodes {
-			if node.SwarmMode == leader {
-				nodes[i].Traefik = true
-			}
-		}
-		marshaledNode, err := yaml.Marshal(&nodes)
-		gc.ExitIfError(err)
-		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
-		err = ioutil.WriteFile(nodesFilePath, marshaledNode, 0600)
-		gc.Info("Nodes written in file")
-		gc.ExitIfError(err)
+		DeployTraefik(argTraefikPass)
 	}),
 }
 
@@ -178,9 +184,9 @@ func executeTemplateToFile(filePath string, tmplExecutor interface{}) *bytes.Buf
 	return &tmplBuffer
 }
 
-func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, client *SSHClient) {
+func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, client *SSHClient, traefikPass string) {
 
-	clusterFile.TraefikBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.TraefikUser, argTraefikPass))
+	clusterFile.TraefikBasicAuth = client.ExecOrExit(host, fmt.Sprintf("htpasswd -nbB %s \"%s\"", clusterFile.TraefikUser, traefikPass))
 	clusterFile.TraefikBasicAuth = strings.ReplaceAll(clusterFile.TraefikBasicAuth, "$", "\\$\\$")
 
 	tmplBuffer := executeTemplateToFile(filepath.Join(getSourcesDir(), traefikComposeName), clusterFile)
@@ -190,8 +196,8 @@ func deployTraefik(clusterFile *clusterFile, host, traefikComposeName string, cl
 	client.ExecOrExit(host, "sudo docker stack deploy -c "+traefikFolderName+"traefik.yml traefik")
 }
 
-func deployTraefikSSL(clusterFile *clusterFile, host string, client *SSHClient) {
-	deployTraefik(clusterFile, host, traefikComposeFileName, client)
+func deployTraefikSSL(clusterFile *clusterFile, host string, client *SSHClient, traefikPass string) {
+	deployTraefik(clusterFile, host, traefikComposeFileName, client, traefikPass)
 	gc.Doing("Waiting for certs")
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",

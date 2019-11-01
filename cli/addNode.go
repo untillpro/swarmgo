@@ -21,7 +21,7 @@ import (
 const nodesFileName = "nodes.yml"
 
 var skipSSHConfiguration bool = false
-var rootPassword string = ""
+var argRootPassword string = ""
 
 type user struct {
 	host, alias, userName, rootUserName string
@@ -33,16 +33,13 @@ type node struct {
 	Traefik                    bool
 }
 
-func add(cmd *cobra.Command, args []string) {
-	initCommand("add")
-	defer finitCommand()
-
-	checkSSHAgent()
+// AddNodes adds nodes to cluster configuration
+func AddNodes(nodesToAdd map[string]string, rootPassword string) {
+	gc.Info("Adding nodes", nodesToAdd)
+	gc.ExitIfFalse(len(nodesToAdd) > 0, "Nothing to add")
 
 	// *************************************************
-	gc.Doing("Reading config")
-
-	readWorkingFileIfExists(swarmgoConfigFileName, "Config file not found, to create it run `swarmgo init`")
+	nodesFromYaml := getNodesFromYml(getWorkingDir())
 	clusterFile := unmarshalClusterYml()
 	rootUserName := clusterFile.RootUserName
 	if strings.Trim(rootUserName, " \n") == "" {
@@ -52,53 +49,6 @@ func add(cmd *cobra.Command, args []string) {
 	gc.Verbose("clusterFile", clusterFile)
 	gc.Verbose("ClusterName", clusterFile.ClusterName)
 	gc.Verbose("RootUserName", rootUserName)
-
-	nodesFromYaml := getNodesFromYml(getWorkingDir())
-
-	// *************************************************
-	gc.Doing("Getting existing nodeNames and nodeIPs")
-
-	nodeNames := make(map[string]string)
-	nodeIPs := make(map[string]string)
-	for _, node := range nodesFromYaml {
-		nodeNames[node.Alias] = node.Host
-		nodeIPs[node.Host] = node.Alias
-	}
-
-	// *************************************************
-	gc.Doing("Calculating which nodes to add")
-
-	nodesToAdd := make(map[string]string)
-
-	for _, arg := range args {
-		userAndAlias := strings.Split(arg, "=")
-		gc.ExitIfFalse(len(userAndAlias) == 2, "Wrong argument:`", arg, " ` must be <node name>=<node IP>")
-		userAndAlias[0] = strings.TrimSpace(userAndAlias[0])
-		userAndAlias[1] = strings.TrimSpace(userAndAlias[1])
-
-		gc.ExitIfFalse(len(userAndAlias[0]) > 0, "Wrong argument: ", arg)
-		gc.ExitIfFalse(len(userAndAlias[1]) > 0, "Wrong argument: ", arg)
-
-		nodeName := userAndAlias[0]
-		nodeIP := userAndAlias[1]
-
-		if value, ex := nodeNames[nodeName]; ex {
-			gc.Info("Name already configured:", nodeName, value)
-			continue
-		}
-
-		if value, ex := nodeIPs[nodeIP]; ex {
-			gc.Info("IP already configured:", nodeIP, value)
-			continue
-		}
-		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
-	}
-
-	gc.Verbose("nodesToAdd", nodesToAdd)
-	gc.ExitIfFalse(len(nodesToAdd) > 0, "Nothing to add")
-
-	// *************************************************
-
 	var users []user
 	for name, IP := range nodesToAdd {
 		var user user
@@ -113,7 +63,7 @@ func add(cmd *cobra.Command, args []string) {
 
 	if !skipSSHConfiguration {
 		for _, value := range users {
-			err := configHostToUseKeys(value, publicKeyFile)
+			err := configHostToUseKeys(value, publicKeyFile, rootPassword)
 			gc.ExitIfError(err, "Unable to add user for node: "+value.host)
 		}
 	}
@@ -157,7 +107,62 @@ func add(cmd *cobra.Command, args []string) {
 	nodesFile := filepath.Join(getWorkingDir(), nodesFileName)
 	gc.ExitIfError(ioutil.WriteFile(nodesFile, marshaledNode, 0600))
 	gc.ExitIfFalse(len(errMsgs) == 0, "Failed to add some node(s)")
-	gc.Info("Done")
+	gc.Info("All nodes added")
+}
+
+func add(cmd *cobra.Command, args []string) {
+	initCommand("add")
+	defer finitCommand()
+
+	checkSSHAgent()
+
+	// *************************************************
+	gc.Doing("Reading configuration")
+
+	readWorkingFileIfExists(swarmgoConfigFileName, "Config file not found, to create it run `swarmgo init`")
+
+	nodesFromYaml := getNodesFromYml(getWorkingDir())
+
+	// *************************************************
+	gc.Doing("Getting existing nodeNames and nodeIPs")
+
+	nodeNames := make(map[string]string)
+	nodeIPs := make(map[string]string)
+	for _, node := range nodesFromYaml {
+		nodeNames[node.Alias] = node.Host
+		nodeIPs[node.Host] = node.Alias
+	}
+
+	// *************************************************
+	gc.Doing("Calculating which nodes to add")
+
+	nodesToAdd := make(map[string]string)
+
+	for _, arg := range args {
+		userAndAlias := strings.Split(arg, "=")
+		gc.ExitIfFalse(len(userAndAlias) == 2, "Wrong argument:`", arg, " ` must be <node name>=<node IP>")
+		userAndAlias[0] = strings.TrimSpace(userAndAlias[0])
+		userAndAlias[1] = strings.TrimSpace(userAndAlias[1])
+
+		gc.ExitIfFalse(len(userAndAlias[0]) > 0, "Wrong argument: ", arg)
+		gc.ExitIfFalse(len(userAndAlias[1]) > 0, "Wrong argument: ", arg)
+
+		nodeName := userAndAlias[0]
+		nodeIP := userAndAlias[1]
+
+		if value, ex := nodeNames[nodeName]; ex {
+			gc.Info("Name already configured:", nodeName, value)
+			continue
+		}
+
+		if value, ex := nodeIPs[nodeIP]; ex {
+			gc.Info("IP already configured:", nodeIP, value)
+			continue
+		}
+		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
+	}
+
+	AddNodes(nodesToAdd, argRootPassword)
 }
 
 var addNodeCmd = &cobra.Command{
@@ -168,7 +173,7 @@ var addNodeCmd = &cobra.Command{
 	Run:   add,
 }
 
-func configHostToUseKeys(user user, publicKeyFile string) error {
+func configHostToUseKeys(user user, publicKeyFile string, rootPass string) error {
 
 	host := user.host
 	userName := user.userName
@@ -185,14 +190,14 @@ func configHostToUseKeys(user user, publicKeyFile string) error {
 	setupCmd := "echo '" + string(scriptBytes) + "' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh " + userName + " " + generateRandomString(32) + " \"" + string(pemBytes) + "\" && rm ~/setup.sh"
 
 	client := getSSHClientInstance(rootUserName, "")
-	client.HideStdout = false
-	client.Password = rootPassword
+	client.Password = rootPass
+	client.HideStdout = len(rootPass) > 0 // When password specified, no input expected from user
 	_, err = client.Exec(host, setupCmd)
 	if err != nil {
 		return err
 	}
 
-	logWithPrefix(host, "Done")
+	logWithPrefix(host, "Node added")
 	return nil
 }
 

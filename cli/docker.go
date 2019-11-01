@@ -28,77 +28,80 @@ type nodeAndError struct {
 
 var forceUpgradeDocker bool
 
-// dockerCmd represents the docker command
+// InstallDocker installs Docker on specified nodes
+func InstallDocker(upgrade bool, args []string) {
+	gc.Info("Installing Docker")
+	clusterFile := unmarshalClusterYml()
+	nodesFromYaml := getNodesFromYml(getWorkingDir())
+	gc.ExitIfFalse(len(nodesFromYaml) > 0, "Can't find nodes from nodes.yml. Add some nodes first!")
+
+	aliasesAndNodes := make(map[string]node)
+	for _, node := range nodesFromYaml {
+		aliasesAndNodes[node.Alias] = node
+	}
+	nodesForDocker := make([]node, 0, len(nodesFromYaml))
+	if len(args) != 0 {
+		for _, arg := range args {
+			val, ok := aliasesAndNodes[arg]
+			gc.ExitIfFalse(ok, "missing in nodes.yml")
+			nodesForDocker = append(nodesForDocker, val)
+		}
+	} else {
+		nodesForDocker = nodesFromYaml
+	}
+	var channelForNodes = make(chan nodeAndError)
+	for _, currentNode := range nodesForDocker {
+		go func(node node) {
+			nodeFromGoroutine, err := installDocker(node, getSSHClient(clusterFile), upgrade)
+			nodeFromFunc := nodeAndError{
+				nodeFromGoroutine,
+				err,
+			}
+			channelForNodes <- nodeFromFunc
+		}(currentNode)
+	}
+	errMsgs := make([]string, 0, len(args))
+	for range nodesForDocker {
+		nodeWithPossibleError := <-channelForNodes
+		node := nodeWithPossibleError.nodeWithPossibleError
+		err := nodeWithPossibleError.err
+		if nodeWithPossibleError.err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("Host: %v, returns error: %v", node.Host,
+				err.Error()))
+		}
+		aliasesAndNodes[node.Alias] = node
+	}
+	for _, errMsg := range errMsgs {
+		gc.Info(errMsg)
+	}
+	close(channelForNodes)
+	nodes := make([]node, 0, len(aliasesAndNodes))
+	for _, val := range aliasesAndNodes {
+		nodes = append(nodes, val)
+	}
+	marshaledNode, err := yaml.Marshal(&nodes)
+	gc.ExitIfError(err)
+	nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
+	gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
+	gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install docker on some node(s)")
+}
+
 var dockerCmd = &cobra.Command{
 	Use:   "docker <arg1 arg2...> or not",
 	Short: "Install docker. Use -u flag to upgrade",
 	Long:  `Downloads and installs latest version of docker`,
 	Run: loggedCmd(func(cmd *cobra.Command, args []string) {
-
 		checkSSHAgent()
-		clusterFile := unmarshalClusterYml()
-		nodesFromYaml := getNodesFromYml(getWorkingDir())
-		gc.ExitIfFalse(len(nodesFromYaml) > 0, "Can't find nodes from nodes.yml. Add some nodes first!")
-
-		aliasesAndNodes := make(map[string]node)
-		for _, node := range nodesFromYaml {
-			aliasesAndNodes[node.Alias] = node
-		}
-		nodesForDocker := make([]node, 0, len(nodesFromYaml))
-		if len(args) != 0 {
-			for _, arg := range args {
-				val, ok := aliasesAndNodes[arg]
-				gc.ExitIfFalse(ok, "missing in nodes.yml")
-				nodesForDocker = append(nodesForDocker, val)
-			}
-		} else {
-			nodesForDocker = nodesFromYaml
-		}
-		var channelForNodes = make(chan nodeAndError)
-		for _, currentNode := range nodesForDocker {
-			go func(node node) {
-				nodeFromGoroutine, err := installDocker(node, getSSHClient(clusterFile))
-				nodeFromFunc := nodeAndError{
-					nodeFromGoroutine,
-					err,
-				}
-				channelForNodes <- nodeFromFunc
-			}(currentNode)
-		}
-		errMsgs := make([]string, 0, len(args))
-		for range nodesForDocker {
-			nodeWithPossibleError := <-channelForNodes
-			node := nodeWithPossibleError.nodeWithPossibleError
-			err := nodeWithPossibleError.err
-			if nodeWithPossibleError.err != nil {
-				errMsgs = append(errMsgs, fmt.Sprintf("Host: %v, returns error: %v", node.Host,
-					err.Error()))
-			}
-			aliasesAndNodes[node.Alias] = node
-		}
-		for _, errMsg := range errMsgs {
-			gc.Info(errMsg)
-		}
-		close(channelForNodes)
-		nodes := make([]node, 0, len(aliasesAndNodes))
-		for _, val := range aliasesAndNodes {
-			nodes = append(nodes, val)
-		}
-		marshaledNode, err := yaml.Marshal(&nodes)
-		gc.ExitIfError(err)
-		nodesFilePath := filepath.Join(getWorkingDir(), nodesFileName)
-		gc.ExitIfError(ioutil.WriteFile(nodesFilePath, marshaledNode, 0600))
-		gc.ExitIfFalse(len(errMsgs) == 0, "Failed to install docker on some node(s)")
+		InstallDocker(forceUpgradeDocker, args)
 	}),
 }
 
-func installDocker(node node, client *SSHClient) (node, error) {
+func installDocker(node node, client *SSHClient, upgrade bool) (node, error) {
 	host := node.Host
 
-	//check that already installed, use "force" flag to force update
 	version, err := getDockerVersion(host, client)
 	if err == nil && version != "" {
-		if !forceUpgradeDocker {
+		if !upgrade {
 			logWithPrefix(host, fmt.Sprintf("Docker version [%s] already installed! Use -u flag to update docker to the latest version", version))
 			node.DockerVersion = version
 			return node, err
@@ -133,7 +136,7 @@ func installDocker(node node, client *SSHClient) (node, error) {
 		},
 		SSHCommand{
 			cmd:   "sudo apt-get -y install " + docker,
-			title: "Trying to install the latest version of " + docker,
+			title: "Installing the latest version of " + docker,
 		},
 	}
 
