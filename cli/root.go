@@ -76,7 +76,8 @@ func Execute() {
 
 	rootCmd.AddCommand(imluckyCmd)
 	imluckyCmd.Flags().BoolVarP(&luckyNoAlerts, "no-alerts", "n", false, "Configure no push alerts in Prometheus Alertmamnager")
-	imluckyCmd.Flags().StringVarP(&luckySlackWebhookURL, "slack-webhook-url", "s", "", "Configure Slack alerts by specifying Webhook URL")
+	imluckyCmd.Flags().BoolVarP(&luckySkipSSHConfiguration, "skip-ssh", "s", false, "Use this option when ClusterUser already exists and SSH access is configured for on nodes being added")
+	imluckyCmd.Flags().StringVarP(&luckySlackWebhookURL, "slack-webhook-url", "w", "", "Configure Slack alerts by specifying Webhook URL")
 	imluckyCmd.Flags().StringVarP(&luckyMonPassword, "mon-password", "m", "", "Specify password for monitoring serices ui: Traefik dashboard, Grafana, Alertmanager, Prometheus")
 	imluckyCmd.Flags().StringVarP(&luckyRootPassword, "password", "p", "", "Specify root password (password access will be disabled)")
 

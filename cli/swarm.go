@@ -204,6 +204,10 @@ func getHostsFromNodesGroupingBySwarmModeValue(nodes []node) (node, []node, []no
 func configUfwToWorkInSwarmMode(host string, client *SSHClient) error {
 	commands := []SSHCommand{
 		SSHCommand{
+			cmd:   "sudo apt-get -y install ufw",
+			title: "Installing ufw",
+		},
+		SSHCommand{
 			cmd:   "sudo ufw allow 22/tcp",
 			title: "Adding ufw rule 22/tcp",
 		},

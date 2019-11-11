@@ -11,6 +11,7 @@ var luckyRootPassword string
 var luckyMonPassword string
 var luckyNoAlerts bool
 var luckySlackWebhookURL string
+var luckySkipSSHConfiguration bool
 
 const (
 	traefikLabelValue    = "traefik=true"
@@ -38,7 +39,7 @@ var imluckyCmd = &cobra.Command{
 			nodes[nodeAlias] = arg
 		}
 
-		AddNodes(nodes, luckyRootPassword)
+		AddNodes(nodes, luckyRootPassword, luckySkipSSHConfiguration)
 		InstallDocker(false, []string{})
 		if len(nodes) == 1 {
 			AddToSwarm(true, []string{alias(1)})

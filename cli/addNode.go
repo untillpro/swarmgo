@@ -34,7 +34,7 @@ type node struct {
 }
 
 // AddNodes adds nodes to cluster configuration
-func AddNodes(nodesToAdd map[string]string, rootPassword string) {
+func AddNodes(nodesToAdd map[string]string, rootPassword string, skipSSH bool) {
 	gc.Info("Adding nodes", nodesToAdd)
 	gc.ExitIfFalse(len(nodesToAdd) > 0, "Nothing to add")
 
@@ -61,7 +61,7 @@ func AddNodes(nodesToAdd map[string]string, rootPassword string) {
 
 	publicKeyFile, privateKeyFile := findSSHKeys(clusterFile)
 
-	if !skipSSHConfiguration {
+	if !skipSSH {
 		for _, value := range users {
 			err := configHostToUseKeys(value, publicKeyFile, rootPassword)
 			gc.ExitIfError(err, "Unable to add user for node: "+value.host)
@@ -73,7 +73,7 @@ func AddNodes(nodesToAdd map[string]string, rootPassword string) {
 		go func(user user) {
 			client := getSSHClientInstance(user.userName, privateKeyFile)
 			uname, err := client.Exec(user.host, "uname -a")
-			if err == nil && !skipSSHConfiguration {
+			if err == nil && !skipSSH {
 				err = configureFirewall(user.host, client)
 			}
 			if err != nil {
@@ -162,7 +162,7 @@ func add(cmd *cobra.Command, args []string) {
 		nodesToAdd[userAndAlias[0]] = userAndAlias[1]
 	}
 
-	AddNodes(nodesToAdd, argRootPassword)
+	AddNodes(nodesToAdd, argRootPassword, skipSSHConfiguration)
 }
 
 var addNodeCmd = &cobra.Command{
