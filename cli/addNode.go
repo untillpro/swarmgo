@@ -74,7 +74,7 @@ func AddNodes(nodesToAdd map[string]string, rootPassword string, skipSSH bool) {
 			client := getSSHClientInstance(user.userName, privateKeyFile)
 			uname, err := client.Exec(user.host, "uname -a")
 			if err == nil && !skipSSH {
-				err = configureFirewall(user.host, client)
+				err = configureFirewall(user.host, user.alias, client)
 			}
 			if err != nil {
 				nodesChannel <- err
@@ -201,8 +201,12 @@ func configHostToUseKeys(user user, publicKeyFile string, rootPass string) error
 	return nil
 }
 
-func configureFirewall(host string, client *SSHClient) error {
+func configureFirewall(host string, alias string, client *SSHClient) error {
 	commands := []SSHCommand{
+		SSHCommand{
+			cmd:   "sudo hostnamectl set-hostname " + alias,
+			title: "Renaming node to " + alias,
+		},
 		SSHCommand{
 			cmd:   "sudo ufw allow OpenSSH",
 			title: "Allowing OpenSSH in firewall",
