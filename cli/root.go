@@ -20,6 +20,7 @@ type clusterFile struct {
 	ClusterName           string                       `yaml:"Cluster"`
 	RootUserName          string                       `yaml:"RootUser"`
 	ClusterUserName       string                       `yaml:"ClusterUser"`
+	ClusterNodeNamePrefix string                       `yaml:"ClusterNodeNamePrefix"`
 	PublicKey             string                       `yaml:"PublicKey"`
 	PrivateKey            string                       `yaml:"PrivateKey"`
 	Docker                map[string]map[string]string `yaml:"Docker"`

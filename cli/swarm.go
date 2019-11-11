@@ -127,9 +127,9 @@ var swarmCmd = &cobra.Command{
 	},
 }
 
-func getToken(mode, host string, client *SSHClient) (string, error) {
+func getToken(mode, host string, client *SSHClient, targetHost string) (string, error) {
 	output, err := client.Exec(host, "$sudo docker swarm join-token "+mode) // "$" prefix masks output
-	return strings.Trim(substringAfterIncludeValue(output, "docker swarm join"), "\n "), err
+	return strings.Trim(substringAfterIncludeValue(output, "docker swarm join --advertise-addr \""+targetHost+"\""), "\n "), err
 }
 
 func reloadUfwAndDocker(host string, client *SSHClient) error {
@@ -256,13 +256,13 @@ func joinToSwarm(node node, leaderHost string, file *clusterFile, mgr bool) (nod
 		if err != nil {
 			return node, err
 		}
-		token, err = getToken("manager", leaderHost, client)
+		token, err = getToken("manager", leaderHost, client, node.Host)
 		if err != nil {
 			return node, err
 		}
 		node.SwarmMode = manager
 	} else {
-		token, err = getToken("worker", leaderHost, client)
+		token, err = getToken("worker", leaderHost, client, node.Host)
 		if err != nil {
 			return node, err
 		}

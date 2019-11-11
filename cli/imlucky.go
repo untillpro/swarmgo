@@ -12,6 +12,7 @@ var luckyMonPassword string
 var luckyNoAlerts bool
 var luckySlackWebhookURL string
 var luckySkipSSHConfiguration bool
+var nodePrefix string
 
 const (
 	traefikLabelValue    = "traefik=true"
@@ -19,7 +20,7 @@ const (
 )
 
 func alias(i int) string {
-	return fmt.Sprintf("node%d", i)
+	return fmt.Sprintf("%s%d", nodePrefix, i)
 }
 
 var imluckyCmd = &cobra.Command{
@@ -32,6 +33,9 @@ var imluckyCmd = &cobra.Command{
 		gc.ExitIfFalse(len(getNodesFromYml(getWorkingDir())) == 0, "Some nodes already has been added already. Use 'imlucky' command on clean configuration only")
 
 		checkSSHAgent()
+
+		clusterFile := unmarshalClusterYml()
+		nodePrefix = clusterFile.ClusterNodeNamePrefix
 
 		nodes := make(map[string]string)
 		for i, arg := range args {
