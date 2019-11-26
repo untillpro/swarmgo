@@ -89,3 +89,6 @@ Networks:
 
 - ssh cluster@address -i ~/.ssh/gmpw7
 - apt-cache madison docker-ce
+
+# Known Issues
+- When nodes are bihind of NAT (e.g. using external IP addresses) encrypted networks doesn't work in Ubuntu LTE 18.04 and other OSes running kernel >4.4, ref. https://github.com/moby/moby/issues/37115 for details

@@ -280,7 +280,7 @@ func joinToSwarm(node node, leaderHost string, file *clusterFile, mgr bool) (nod
 	}
 	gc.Doing("Joining " + node.Host + " to swarm")
 	// "!" is used to avoid logging
-	_, err = client.Exec(node.Host, "!sudo "+token)
+	_, err = client.Exec(node.Host, "sudo "+token)
 	if err != nil {
 		node.SwarmMode = ""
 		return node, err
