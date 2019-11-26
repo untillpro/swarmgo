@@ -154,8 +154,8 @@ func UpgradeAlertmanagerCfg(noalerts bool, slackWebhook string) {
 	}
 }
 
-func templateAndCopy(client *SSHClient, host, localFile, destFile string, clusterFile *clusterFile) {
-	appliedBuffer := executeTemplateToFile(localFile, clusterFile)
+func templateAndCopy(client *SSHClient, host, localFile, destFile string, tmplExecutor interface{}) {
+	appliedBuffer := executeTemplateToFile(localFile, tmplExecutor)
 	client.ExecOrExit(host, "cat > "+destFile+" << EOF\n\n"+appliedBuffer.String()+"\nEOF")
 	gc.Verbose(destFile, fmt.Sprintf("Copied and applied by template '%s'->'%s'", localFile, destFile))
 }

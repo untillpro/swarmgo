@@ -40,6 +40,18 @@ const (
 type SSHCommand struct {
 	cmd   string
 	title string
+	cmd1  string
+	cmd2  string
+	cmd3  string
+	cmd4  string
+	cmd5  string
+	cmd6  string
+}
+
+// SSHBatch is a set of commands
+type SSHBatch struct {
+	cmd   []string
+	title string
 }
 
 func getTempDir() string {
@@ -68,6 +80,42 @@ func sshKeyAuthCmds(host string, client *SSHClient, commands []SSHCommand) error
 		_, error := client.Exec(host, cmd.cmd)
 		if error != nil {
 			return error
+		}
+		if len(cmd.cmd1) > 0 {
+			_, error := client.Exec(host, cmd.cmd1)
+			if error != nil {
+				return error
+			}
+		}
+		if len(cmd.cmd2) > 0 {
+			_, error := client.Exec(host, cmd.cmd2)
+			if error != nil {
+				return error
+			}
+		}
+		if len(cmd.cmd3) > 0 {
+			_, error := client.Exec(host, cmd.cmd3)
+			if error != nil {
+				return error
+			}
+		}
+		if len(cmd.cmd4) > 0 {
+			_, error := client.Exec(host, cmd.cmd4)
+			if error != nil {
+				return error
+			}
+		}
+		if len(cmd.cmd5) > 0 {
+			_, error := client.Exec(host, cmd.cmd5)
+			if error != nil {
+				return error
+			}
+		}
+		if len(cmd.cmd6) > 0 {
+			_, error := client.Exec(host, cmd.cmd6)
+			if error != nil {
+				return error
+			}
 		}
 	}
 	return nil

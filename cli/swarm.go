@@ -132,7 +132,7 @@ func getToken(mode, host string, client *SSHClient, targetHost string) (string, 
 	cmd := ""
 	if err == nil {
 		cmd = strings.Trim(substringAfterIncludeValue(output, "docker swarm join"), "\n ")
-		cmd = strings.Replace(cmd, "swarm join ", fmt.Sprintf("swarm join --advertise-addr \"%s\" ", targetHost), 1)
+		cmd = strings.Replace(cmd, "swarm join ", fmt.Sprintf("swarm join --advertise-addr \"%s\" --data-path-addr \"%s\" ", targetHost, targetHost), 1)
 	}
 	return cmd, err
 }
@@ -162,7 +162,7 @@ func initSwarm(nodes []node, args []string, file *clusterFile) (node, []node) {
 	err = reloadUfwAndDocker(host, client)
 	gc.ExitIfError(err)
 
-	_, err = client.Exec(host, "sudo docker swarm init --advertise-addr "+host)
+	_, err = client.Exec(host, "sudo docker swarm init --advertise-addr "+host+" --data-path-addr "+host)
 	nodes = append(nodes[:index], nodes[index+1:]...)
 	node.SwarmMode = leader
 	gc.Info("Swarm initialized, leader node is " + alias)
