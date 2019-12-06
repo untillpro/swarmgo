@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	nomadVersion = "0.10.1"
+	nomadVersion = "0.10.2"
 )
 
 type nomadCfg struct {
@@ -115,6 +115,11 @@ func configUfwForNomad(host string, client *SSHClient) error {
 			cmd3:  "sudo ufw allow 4647/tcp", // rpc
 			cmd4:  "sudo ufw allow 4646/tcp", // http api
 		},
+		SSHCommand{ // DEV
+			title: "Setting up firewall rules (dev)",
+			cmd:   "sudo ufw allow 8000/tcp", // TODO: dev!
+			cmd2:  "sudo ufw allow 8080/tcp", // TODO: dev!
+		},
 	}
 
 	err := sshKeyAuthCmds(host, client, commands)
@@ -144,6 +149,9 @@ func installNomadAtNode(node node, leaderHost string, file *clusterFile, server 
 	templateAndCopy(client, node.Host, "scripts/nomad.service", "~/nomad.service", cfg)
 	templateAndCopy(client, node.Host, "scripts/nomad.hcl", "~/nomad.hcl", cfg)
 	templateAndCopy(client, node.Host, "scripts/nomad-server.hcl", "~/nomad-server.hcl", cfg)
+
+	templateAndCopy(client, node.Host, "scripts/nomad/traefik.job", "~/traefik.job", cfg) // TODO: dev!
+	templateAndCopy(client, node.Host, "scripts/nomad/myapp.job", "~/myapp.job", cfg)     // TODO: dev!
 
 	commands := []SSHCommand{
 		SSHCommand{

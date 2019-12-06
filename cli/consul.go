@@ -147,6 +147,10 @@ func configUfwForConsul(host string, client *SSHClient) error {
 			cmd5:  "sudo ufw allow 8302/tcp",
 			cmd6:  "sudo ufw allow 8302/udp",
 		},
+		SSHCommand{ // TODO: dev!!!
+			title: "Setting up firewall rules (dev)",
+			cmd6:  "sudo ufw allow 8500/tcp",
+		},
 	}
 
 	err := sshKeyAuthCmds(host, client, commands)

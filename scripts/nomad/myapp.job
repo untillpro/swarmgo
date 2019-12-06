@@ -1,0 +1,37 @@
+job "srv" {
+  datacenters = ["dc1"]
+    group "example" {
+        count = "3"
+        task "server" {
+            driver = "exec"    
+            artifact {
+                source = "https://drive.google.com/uc?export=download&id=1c-7OpFYCEZVYWGFrNXzkvqTuFncYxybg"
+            }
+            config {
+                command = "./srv"
+            }
+
+            env {
+                SRV_HOME = "/local"
+            }
+
+            resources {
+                network {
+                    port "lb" {
+                        static = "8090"
+                    }
+                }
+            }
+
+            service {
+                name = "srv"
+                tags = [
+                    "traefik.enable=true",
+                    "traefik.frontend.rule=PathPrefix:/static,/bin"                
+                ]
+                port = "lb"
+                address_mode = "host"
+            }
+        }
+    }
+}

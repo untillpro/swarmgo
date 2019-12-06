@@ -1,0 +1,37 @@
+job "trf" {
+  datacenters = ["dc1"]
+    group "traefik-group" {
+        count = "3"
+        task "traefik" {
+            driver ="exec"
+            artifact {
+                source = "https://github.com/containous/traefik/releases/download/v1.7.14/traefik_linux-386"
+            }
+            artifact {
+                source = "https://www.projectkaiser.com/tmp/traefik-nomad.toml"
+            }
+            config {
+                command = "./traefik_linux-386"
+                args = [
+                    "--api",
+                    "--api.dashboard=true",
+                    "--consulcatalog.endpoint=127.0.0.1:8500",
+                    "--consulcatalog.exposedByDefault=false",
+                    "--consulcatalog.domain=consul.localhost",
+                    "--consulcatalog.prefix=traefik",
+                    "--entryPoints=Name:http Address::8000",
+                    "--logLevel=DEBUG",
+                    "--accesslog=true"
+                ]
+            }
+            resources {
+                network {
+                    port "http" {
+                        static = "8000"
+                    }
+                }
+            }
+
+        }
+    }
+}

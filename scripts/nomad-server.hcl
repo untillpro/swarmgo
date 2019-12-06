@@ -3,6 +3,16 @@ server {
   bootstrap_expect = 3
 }
 
+client {
+  enabled = true
+}
+
+plugin "raw_exec" {
+  config {
+    enabled = true
+  }
+}
+
 bind_addr = "{{.Host}}"
 
 advertise {
