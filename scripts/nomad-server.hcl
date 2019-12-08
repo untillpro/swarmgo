@@ -5,6 +5,7 @@ server {
 
 client {
   enabled = true
+  network_interface = "eth1"
 }
 
 plugin "raw_exec" {
