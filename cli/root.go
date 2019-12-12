@@ -96,12 +96,6 @@ func Execute() {
 
 	rootCmd.AddCommand(eLKCmd)
 
-	rootCmd.AddCommand(consulCmd)
-	consulCmd.Flags().BoolVarP(&mode, "server", "s", false, "Install consul as server")
-
-	rootCmd.AddCommand(nomadCmd)
-	nomadCmd.Flags().BoolVarP(&mode, "server", "s", false, "Install nomad as server")
-
 	rootCmd.AddCommand(swarmCmd)
 	swarmCmd.Flags().BoolVarP(&mode, "manager", "m", false, "Swarm mode: m means `join-manager")
 
