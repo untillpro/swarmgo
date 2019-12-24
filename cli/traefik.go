@@ -81,6 +81,7 @@ func DeployTraefik(traefikPass string) {
 
 	var traefikComposeName string
 	if clusterFile.ACMEEnabled {
+		client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
 		traefikComposeName = traefikComposeFileName
 		gc.Info("Traefik in production mode will be deployed")
 		if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {

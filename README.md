@@ -33,7 +33,7 @@ Steps:
   - Use `-n` option to disable alerts from alertmanager
   - Use `-w webhook_url` option to configure Slack alerts for specified webhook URL
 
-  Example: `swarmgo imlucky 192.168.98.10 192.168.98.11 192.168.98.12 -p "pas" -m "mon" -n`
+  Example: `swarmgo imlucky 192.168.98.10 192.168.98.11 192.168.98.12 -p "pas" -m "mon" -n -s`
 
 Commands to build cluster manually:
 
