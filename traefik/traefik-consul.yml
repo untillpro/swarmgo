@@ -4,9 +4,9 @@ services:
   traefik:
     image: {{.Traefik}}
     command:
-      - "--consul"
-      - "--consul.endpoint=consul_main:8500"
-      - "--consul.prefix=traefik"
+      - "--providers.consulCatalog"
+      - "--providers.consulCatalog.endpoint=consul_main:8500"
+      - "--providers.consulCatalog.prefix=traefik"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -19,13 +19,17 @@ services:
       mode: global
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.traefik == true
       labels:
-        - traefik.enable=true
-        - traefik.backend=traefik
-        - traefik.frontend.rule=PathPrefixStrip:/traefik
-        - traefik.port=8080
-        - traefik.docker.network=mon
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=PathPrefix(\`/api\`) || PathPrefix(\`/dashboard\`)" 
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        - "traefik.http.routers.traefik.middlewares=auth"
+        - "traefik.http.middlewares.auth.basicauth.users={{.TraefikBasicAuth}}"
+        - "traefik.http.middlewares.auth.basicauth.realm=dashboard"
+        - "traefik.docker.network=mon"
+        - "traefik.docker.lbswarm=true"
       update_config:
         parallelism: 1
         delay: 10s
@@ -36,4 +40,6 @@ networks:
   consul:
     external: true
   mon:
+    external: true
+  docat:
     external: true

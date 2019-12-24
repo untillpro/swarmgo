@@ -16,20 +16,22 @@ Steps:
 - Run `go build swarmgo.go` to build swarmgo executable
 - Run `swarmgo init` to init config
   - Command creates `nodes/swarmgo-config.yml` with the swarmgo configuration settings
-- Run `swarmgo keys` to generate new or specify existing SSH keys
-  - `swarmgo keys` generates new key pair
-  - `swarmgo keys -p PRIVATE_KEY_PATH -u PUBLIC_KEY_PATH` tells to use the existing key pair
+  - Setting in this configuration file may be updated:
+    - When building cluster with LetsEncrypt certificate, make sure that `ACMEEnabled` setting is set to `true`, also `Domain` and `Email` settings filled properly
+    - When target nodes are already pre-configured for SSH access with private/public keys, make sure that `PublicKey` and `PrivateKey` settings are filled properly
+- Run `swarmgo keys` to generate new SSH keys. This is only needed to be execited with target node(s) is pre-configured with plaintext password. Skip this option when node is already pre-configured with key access for SSH.
   - Keys are kept in `nodes/swarmgo-config.yml` 
 - Run ``eval `swarmgo agent` ``
-  - Command starts `ssh-agent` enabling single sign-on in the current terminal session
+  - Command starts `ssh-agent` enabling single sign-on in the current terminal session. SSH keys must be configured.
 - Run `swarmgo imlucky IP1 [IP2] [IP3]` to build cluster automatically, with settings assigned automatically
   - Nodes will be added with aliases node1, node2, node3
   - One or three nodes will be assigned as managers, depending on number of nodes
   - Traefik and consul will be installed
+  - Use option `-s` when ClusterUser already exists and SSH access using private/public keys is already configured on nodes being added. Make sure that SSH keys configured in `swarmgo-config.yml` when using this option.
   - Use option `-p password` to specify root password (password access will be disabled)
   - Use option `-m password` to specify password for authentication in monitoring services (Grafana, Prometheus, Traefik dashboard and Alert Manager)
   - Use `-n` option to disable alerts from alertmanager
-  - Use `-s webhook_url` option to configure Slack alerts for specified webhook URL
+  - Use `-w webhook_url` option to configure Slack alerts for specified webhook URL
 
   Example: `swarmgo imlucky 192.168.98.10 192.168.98.11 192.168.98.12 -p "pas" -m "mon" -n`
 
@@ -76,7 +78,6 @@ Services:
 # Under the Hood
 
 Networks:
-- consul: traefik + consul
 - mon: all monitoring services + traefik
 - app: 3rd party applications
 - socat: providesaccess to Docker socket from other nodes, required for running Traefik on worker nodes

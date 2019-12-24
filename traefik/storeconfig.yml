@@ -4,31 +4,39 @@ services:
     image: {{.Traefik}}
     command:
       - "storeconfig"
-      - "--api"
-      - "--logLevel=info"
-      - "--entrypoints=Name:http Address::80 Redirect.EntryPoint:https"
-      - "--entrypoints=Name:https Address::443 TLS"
-      - "--defaultentrypoints=http,https"
-      - "--acme"
-      - "--acme.acmelogging=true"
-      - "--acme.overridecertificates=true"
-      - "--acme.storage=traefik/acme/account"
-      - "--acme.entryPoint=https"
-      - "--acme.httpChallenge.entryPoint=http"
-      - "--acme.onHostRule=true"
-      - "--acme.onDemand=false"
-      - "--acme.email={{.Email}}"
-      - "--acme.domains={{.Domain}}"
-      - "--acme.keytype=EC256"
-      - "--docker"
-      - "--docker.exposedbydefault=false"
-      - "--docker.swarmMode"
-      - "--docker.domain={{.Domain}}"
-      - "--docker.watch"
-      - "--consul"
-      - "--consul.endpoint=consul_main:8500"
-      - "--consul.prefix=traefik"
-      - "--maxidleconnsperhost=0"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--log.level=info"
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.https.address=:443" 
+
+      - "--certificatesresolvers.default"
+      - "--certificatesresolvers.default.acme.storage=traefik/acme/account"
+      - "--certificatesresolvers.default.acme.httpChallenge.entryPoint=http"
+      - "--certificatesresolvers.default.acme.email={{.Email}}"
+      - "--certificatesresolvers.default.acme.keytype=EC256"
+      
+      #- "--acme"
+      #?- "--acme.acmelogging=true"
+      #?- "--acme.overridecertificates=true"
+      #- "--acme.storage=traefik/acme/account"
+      #?- "--acme.entryPoint=https"
+      #- "--acme.httpChallenge.entryPoint=http"
+      #?- "--acme.onHostRule=true"
+      #?- "--acme.onDemand=false"
+      #- "--acme.email={{.Email}}"
+      #?- "--acme.domains={{.Domain}}"
+      #- "--acme.keytype=EC256"
+
+      - "--providers.docker"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.swarmMode"
+      # - "--providers.docker.domain={{.Domain}}"
+      - "--providers.docker.watch"
+      - "--providers.consulCatalog"
+      - "--providers.consulCatalog.endpoint=consul_main:8500"
+      - "--providers.consulCatalog.prefix=traefik"
+      - "--serverstransport.maxidleconnsperhost=0"
     networks:
       - consul
     deploy:
@@ -37,7 +45,13 @@ services:
       placement:
         constraints:
           - node.role == manager
-
+      labels:
+      - "traefik.http.routers.web.entrypoints=http"
+      - "traefik.http.routers.web.middlewares.redirection.redirectscheme.scheme=https"
+      - "traefik.http.routers.web-secured.entrypoints=https"
+      - "traefik.http.routers.web-secured.tls=true"
+      - "traefik.http.routers.web-secured.tls.certresolver=default"
+      - "traefik.http.routers.web-secured.tls.domains[0].main={{.Domain}}"
 networks:
   consul:
     external: true

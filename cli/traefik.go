@@ -23,11 +23,12 @@ import (
 )
 
 const (
-	encryptedFlag                 = " --opt encrypted"
-	traefikNodeLabel              = "traefik"
-	traefikFolderName             = "traefik/"
-	consulFolderName              = traefikFolderName + "consul/"
-	traefikComposeFileName        = traefikFolderName + "traefik-consul.yml"
+	encryptedFlag          = " --opt encrypted"
+	traefikNodeLabel       = "traefik"
+	traefikFolderName      = "traefik/"
+	consulFolderName       = traefikFolderName + "consul/"
+	traefikComposeFileName = traefikFolderName + "traefik-http.yml"
+	//traefikComposeFileName        = traefikFolderName + "traefik-consul.yml"
 	traefikTestComposeFileName    = traefikFolderName + "traefik-http.yml"
 	traefikStoreConfigFileName    = traefikFolderName + "storeconfig.yml"
 	consulOneComposeFileName      = consulFolderName + "consul-one.yml"
@@ -73,10 +74,10 @@ func DeployTraefik(traefikPass string) {
 	client.ExecOrExit(host, "sudo apt-get install apache2-utils -y")
 
 	gc.Info("Creating networks")
-	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon")    //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
-	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
-	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")    // al custom applications + traefik
-	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat")  // network traffic between traefik and docker socket on a manager node
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" mon") //sys tools: grafana, prometheus, alertmanager, nodeexporter, cadvisor + traefik
+	//client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")   // al custom applications + traefik
+	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat") // network traffic between traefik and docker socket on a manager node
 
 	var traefikComposeName string
 	if clusterFile.ACMEEnabled {
@@ -85,8 +86,8 @@ func DeployTraefik(traefikPass string) {
 		if len(clusterFile.Domain) == 0 || len(clusterFile.Email) == 0 {
 			gc.Fatal("For traefik with ACME need to specify your docker domain and email to register on letsencrypt")
 		}
-		deployConsul(nodes, clusterFile, host, client)
-		storeTraefikConfigToConsul(clusterFile, host, client)
+		//deployConsul(nodes, clusterFile, host, client)
+		//storeTraefikConfigToConsul(clusterFile, host, client)
 		deployTraefikSSL(clusterFile, host, client, traefikPass)
 	} else {
 		client.ExecOrExit(host, "mkdir -p ~/"+traefikFolderName)
@@ -156,11 +157,11 @@ func deployConsul(nodes []node, clusterFile *clusterFile, host string, client *S
 		consulComposeFileName = consulOneComposeFileName
 	}
 	gc.Info(fmt.Sprintf("Num of managers: %v", bootstrap))
-	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulAgentConfFileName))
+	consulAgentConf, err := ioutil.ReadFile(filepath.Join(getSourcesDir(), consulAgentConfFileName))
 	gc.ExitIfError(err)
-	consulServerConf, err := ioutil.ReadFile(filepath.Join(getWorkingDir(), consulServerConfFileName))
+	consulServerConf, err := ioutil.ReadFile(filepath.Join(getSourcesDir(), consulServerConfFileName))
 	gc.ExitIfError(err)
-	consulCompose := executeTemplateToFile(filepath.Join(getWorkingDir(), consulComposeFileName), nodesForConsul)
+	consulCompose := executeTemplateToFile(filepath.Join(getSourcesDir(), consulComposeFileName), nodesForConsul)
 	gc.Info("Consul configs modified")
 	client.ExecOrExit(host, "mkdir -p ~/"+consulFolderName+"agent")
 	client.ExecOrExit(host, "mkdir -p ~/"+consulFolderName+"server")
@@ -201,7 +202,7 @@ func deployTraefikSSL(clusterFile *clusterFile, host string, client *SSHClient, 
 	gc.Doing("Waiting for certs")
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
-		"sudo docker service logs traefik_traefik", 3, client)
+		"sudo docker service logs traefik_traefik", 3, client) // TODO: Only works when loglevel=INFO
 	gc.Info("traefik deployed")
 }
 

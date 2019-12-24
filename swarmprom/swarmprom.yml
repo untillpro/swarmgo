@@ -80,6 +80,12 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=PathPrefix(\`/grafana\`)" 
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"    
+        {{if .ACMEEnabled}}
+        - "traefik.http.routers.grafana.entrypoints=websecure"
+        - "traefik.http.routers.grafana.tls=true"
+        - "traefik.http.routers.grafana.tls.certresolver=le"
+        - "traefik.http.routers.grafana.tls.domains[0].main={{.Domain}}"
+        {{end}}
         - "traefik.docker.network=mon"
         - "traefik.docker.lbswarm=true"
       placement:
@@ -120,6 +126,12 @@ services:
         - "traefik.http.middlewares.auth_am.basicauth.realm=alertmgr"
         - "traefik.http.middlewares.auth_am.basicauth.removeheader=true"
         - "traefik.docker.network=mon"
+        {{if .ACMEEnabled}}
+        - "traefik.http.routers.alertmgr.entrypoints=websecure"
+        - "traefik.http.routers.alertmgr.tls=true"
+        - "traefik.http.routers.alertmgr.tls.certresolver=le"
+        - "traefik.http.routers.alertmgr.tls.domains[0].main={{.Domain}}"
+        {{end}}
       placement:
         constraints:
           - node.role == manager
@@ -194,6 +206,12 @@ services:
         - "traefik.http.middlewares.auth_pm.basicauth.realm=prometheus"
         - "traefik.docker.lbswarm=true"
         - "traefik.docker.network=mon"
+        {{if .ACMEEnabled}}
+        - "traefik.http.routers.prometheus.entrypoints=websecure"
+        - "traefik.http.routers.prometheus.tls=true"
+        - "traefik.http.routers.prometheus.tls.certresolver=le"
+        - "traefik.http.routers.prometheus.tls.domains[0].main={{.Domain}}"
+        {{end}}
       resources:
         limits:
           memory: 2048M
