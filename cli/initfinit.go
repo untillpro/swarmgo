@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package swarmgo
+package cli
 
 import (
 	"fmt"
@@ -13,10 +13,21 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/spf13/cobra"
 	gc "github.com/untillpro/gochips"
 )
 
 var logFile *os.File
+
+type loggedRunnable func(cmd *cobra.Command, args []string)
+
+func loggedCmd(f loggedRunnable) func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, args []string) {
+		initCommand(cmd.Name())
+		defer finitCommand()
+		f(cmd, args)
+	}
+}
 
 func initCommand(cmdName string) {
 	gc.IsVerbose = true

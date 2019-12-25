@@ -30,7 +30,7 @@ services:
         delay: 5s
         window: 120s
     networks:
-      traefik:
+      consul:
         aliases:
           - consul_main
 
@@ -52,8 +52,8 @@ services:
         delay: 5s
         window: 120s
     networks:
-      - traefik
+      - consul
 
 networks:
-  traefik:
+  consul:
     external: true

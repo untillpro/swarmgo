@@ -5,7 +5,7 @@ receivers:
   - name: 'slack'
     slack_configs:
       - send_resolved: true
-        username: '{{.AlertmanagerUser}}'
+        username: 'Alertmanager'
         channel: '#{{.ChannelName}}'
         api_url: '{{.WebhookURL}}'
         title: '{{"{{"}} template "custom_title" . {{"}}"}}'

@@ -28,7 +28,7 @@ services:
         reservations:
           memory: 512M
     networks:
-      - webgateway
+      - mon
 
   filebeat:
     image: {{.Filebeat}}
@@ -46,7 +46,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     networks:
-      - webgateway
+      - mon
 
   kibana:
     image: {{.Kibana}}
@@ -67,10 +67,10 @@ services:
         - traefik.backend=kibana
         - traefik.frontend.rule=PathPrefix:/kibana
         - traefik.port=5601
-        - traefik.docker.network=webgateway
+        - traefik.docker.network=mon
         - traefik.frontend.auth.basic.users={{.KibanaCreds}}
     networks:
-      - webgateway
+      - mon
 
   logstash:
     image: {{.Logstash}}
@@ -87,7 +87,7 @@ services:
     environment:
       - LS_JAVA_OPTS=-Xmx1g -Xms1g
     networks:
-      - webgateway
+      - mon
 
   curator-filebeat:
     image: {{.Curator}}
@@ -98,8 +98,8 @@ services:
       - HOST=elasticsearch
       - CHRONO_UNIT=days
     networks:
-      - webgateway
+      - mon
 
 networks:
-  webgateway:
+  mon:
     external: true

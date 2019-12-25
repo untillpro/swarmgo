@@ -1,35 +1,68 @@
 version: '3'
 
 services:
+  socat:
+    image: {{.Socat}}
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - socat
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager 
   traefik:
     image: {{.Traefik}}
     command:
-      - --docker
-      - --docker.exposedbydefault=false
-      - --docker.swarmMode
-      - --docker.watch
-      - --docker.domain=localhost
-      - --api
-      - --logLevel=INFO
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.swarmMode
+      - --providers.docker.watch
+      - --providers.docker.endpoint=tcp://socat:2375
+      - --api=true
+      - --api.dashboard=true
+      - --log.level=DEBUG
+      {{if .ACMEEnabled}}
+      - --entryPoints.web.address=:80
+      - --entryPoints.websecure.address=:443
+      - --certificatesResolvers.le.acme.email={{.Email}}
+      - --certificatesResolvers.le.acme.storage=acme.json
+      - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
+      {{else}}
+      - --entryPoints.web.address=:80
+      {{end}}
     networks:
-      - webgateway
+      - mon
+      - socat
     ports:
-      - "80:80"
+      - "80:80"      
+      {{if .ACMEEnabled}}
+      - "443:443"      
+      {{end}}
     deploy:
-      mode: global
       labels:
-        - traefik.enable=true
-        - traefik.backend=traefik
-        - traefik.frontend.rule=PathPrefixStrip:/traefik
-        - traefik.port=8080
-        - traefik.docker.network=webgateway
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=PathPrefix(\`/api\`) || PathPrefix(\`/dashboard\`)" 
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        - "traefik.http.routers.traefik.middlewares=auth"
+        - "traefik.http.middlewares.auth.basicauth.users={{.TraefikBasicAuth}}"
+        - "traefik.http.middlewares.auth.basicauth.realm=dashboard"
+        - "traefik.docker.network=mon"
+        - "traefik.docker.lbswarm=true"
+      {{if .ACMEEnabled}}
+        - "traefik.http.routers.traefik.entrypoints=websecure"
+        - "traefik.http.routers.traefik.tls=true"
+        - "traefik.http.routers.traefik.tls.certresolver=le"
+        - "traefik.http.routers.traefik.tls.domains[0].main={{.Domain}}"
+      {{end}}
       placement:
         constraints:
-          - node.role == manager
-
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
+          - node.labels.traefik == true
 networks:
-  webgateway:
+  mon:
+    external: true
+  socat:
     external: true

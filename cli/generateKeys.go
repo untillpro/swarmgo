@@ -6,7 +6,7 @@
  *
  */
 
-package swarmgo
+package cli
 
 import (
 	"crypto/rand"
@@ -14,10 +14,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	gc "github.com/untillpro/gochips"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	gc "github.com/untillpro/gochips"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -47,7 +48,7 @@ func encodePrivateKeyToPEMAndEncrypt(privateKey *rsa.PrivateKey, password string
 	// Encrypt DER key to encrypted PEM block
 	privatePEM, err := x509.EncryptPEMBlock(rand.Reader, "RSA PRIVATE KEY", privDER, []byte(password),
 		x509.PEMCipherDES)
-	CheckErr(err)
+	gc.ExitIfError(err)
 
 	return pem.EncodeToMemory(privatePEM)
 }
@@ -56,7 +57,7 @@ func encodePrivateKeyToPEMAndEncrypt(privateKey *rsa.PrivateKey, password string
 // returns in the format "ssh-rsa ..."
 func generatePublicKey(privateKey *rsa.PublicKey) []byte {
 	publicRsaKey, err := ssh.NewPublicKey(privateKey)
-	CheckErr(err)
+	gc.ExitIfError(err)
 
 	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
 
