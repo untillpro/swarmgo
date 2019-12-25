@@ -203,7 +203,7 @@ func deployTraefikSSL(clusterFile *clusterFile, host string, client *SSHClient, 
 	gc.Doing("Waiting for certs")
 	waitSuccessOrFailAfterTimer(host, "Server responded with a certificate", "Cert received",
 		"Cert doesn't received in five minutes, deployment stopped",
-		"sudo docker service logs traefik_traefik", 3, client) // TODO: Only works when loglevel=INFO
+		"sudo docker service logs traefik_traefik", 3, client) // TODO: Only works when loglevel=DEBUG!!
 	gc.Info("traefik deployed")
 }
 

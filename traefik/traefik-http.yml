@@ -23,7 +23,7 @@ services:
       - --providers.docker.endpoint=tcp://socat:2375
       - --api=true
       - --api.dashboard=true
-      - --log.level=INFO
+      - --log.level=DEBUG
       {{if .ACMEEnabled}}
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
