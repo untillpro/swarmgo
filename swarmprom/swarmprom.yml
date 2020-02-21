@@ -79,6 +79,7 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=PathPrefix(\`/grafana\`)" 
+        - "traefik.http.routers.grafana.priority=300"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"    
         {{if .ACMEEnabled}}
         - "traefik.http.routers.grafana.entrypoints=websecure"
@@ -120,6 +121,7 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.alertmgr.rule=PathPrefix(\`/alertmanager\`)" 
+        - "traefik.http.routers.alertmgr.priority=300"
         - "traefik.http.services.alertmgr.loadbalancer.server.port=9093"
         - "traefik.http.routers.alertmgr.middlewares=auth_am"
         - "traefik.http.middlewares.auth_am.basicauth.users={{.AlertManagerBasicAuth}}"
@@ -199,6 +201,7 @@ services:
       labels:
         - traefik.enable=true
         - "traefik.http.routers.prometheus.rule=PathPrefix(\`/prometheus\`)" 
+        - "traefik.http.routers.prometheus.priority=300"
         - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
         - "traefik.http.routers.prometheus.middlewares=auth_pm"
         - "traefik.http.middlewares.auth_pm.basicauth.users={{.PrometheusBasicAuth}}"
