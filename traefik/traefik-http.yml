@@ -22,7 +22,7 @@ services:
       - --providers.docker.watch
       - --providers.docker.endpoint=tcp://socat:2375
       - --api=true
-      - --api.dashboard=true
+      - --api.dashboard=false
       - --log.level=DEBUG
       {{if .ACMEEnabled}}
       - --entryPoints.web.address=:80
@@ -44,7 +44,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=PathPrefix(\`/api\`) || PathPrefix(\`/dashboard\`)" 
+        - "traefik.http.routers.traefik.rule=PathPrefix(\`/dashboard\`)" 
         - "traefik.http.routers.traefik.priority=310"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.services.traefik.loadbalancer.server.port=8080"
