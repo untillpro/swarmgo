@@ -189,8 +189,10 @@ func configHostToUseKeys(user user, publicKeyFile string, rootPass string) error
 
 	pemBytes, err := ioutil.ReadFile(publicKeyFile)
 	gc.ExitIfError(err, "Unable to read public key from "+publicKeyFile)
+	cmd := string(scriptBytes)
+	cmd = strings.ReplaceAll(cmd, "\r\n", "\n")
 
-	setupCmd := "echo '" + string(scriptBytes) + "' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh " + userName + " " + generateRandomString(32) + " \"" + string(pemBytes) + "\" && rm ~/setup.sh"
+	setupCmd := "echo '" + cmd + "' > ~/setup.sh && chmod 700 ~/setup.sh && ./setup.sh " + userName + " " + generateRandomString(32) + " \"" + string(pemBytes) + "\" && rm ~/setup.sh"
 
 	client := getSSHClientInstance(rootUserName, "")
 	client.Password = rootPass
