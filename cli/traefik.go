@@ -78,6 +78,7 @@ func DeployTraefik(traefikPass string) {
 	//client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" consul") //consul + traefik
 	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" app")   // al custom applications + traefik
 	client.ExecOrExit(host, "sudo docker network create -d overlay"+encrypted+" socat") // network traffic between traefik and docker socket on a manager node
+	client.ExecOrExit(host, "mkdir -p /etc/traefik")                                    // folder to store acme certificates
 
 	var traefikComposeName string
 	if clusterFile.ACMEEnabled {
