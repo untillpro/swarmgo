@@ -15,6 +15,8 @@ services:
           - node.role == manager 
   traefik:
     image: {{.Traefik}}
+    volumes:
+      - /etc/traefik:/etc/traefik
     command:
       - --providers.docker
       - --providers.docker.exposedbydefault=false
@@ -28,7 +30,7 @@ services:
       - --entryPoints.web.address=:80
       - --entryPoints.websecure.address=:443
       - --certificatesResolvers.le.acme.email={{.Email}}
-      - --certificatesResolvers.le.acme.storage=acme.json
+      - --certificatesResolvers.le.acme.storage=/etc/traefik/acme.json
       - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
       {{else}}
       - --entryPoints.web.address=:80
