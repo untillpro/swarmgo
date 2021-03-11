@@ -1,6 +1,6 @@
 # Overview
 
-swarmgo builds swarm clusters with monitoring, alerting, and automatic certificate generation (using ACME provider) in a minute
+`swarmgo` allows to build swarm clusters with monitoring, alerting, and automatic certificate generation (using ACME provider) in a few minutes
 
 # Usage
 
