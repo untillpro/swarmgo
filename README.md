@@ -13,7 +13,7 @@ Not quire ready for public usage
 
 Prerequestes:
 
-- Go
+- Go 1.16
 - sh
 - git
 - Need opportunity to use sudo command on all nodes without password:
