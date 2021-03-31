@@ -2,6 +2,13 @@
 
 `swarmgo` allows to build swarm clusters with monitoring, alerting, and automatic certificate generation (using ACME provider) in a few minutes
 
+# Status
+
+Not quire ready for public usage
+
+- traefik runs as a single instance, so resulting cluster is not Fault Tolerant anymore (some downtime will take place if traefik node goes down)
+  - "Single instance" is a result of switching to traefik 2+ version, which broke compatibility with previous setup
+
 # Usage
 
 Prerequestes:
