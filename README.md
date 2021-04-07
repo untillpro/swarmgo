@@ -1,6 +1,8 @@
 # Overview
 
-`swarmgo` allows to build swarm clusters with monitoring, alerting, and https access (using ACME provider) in a few minutes
+`swarmgo` allows to build swarm clusters with monitoring, alerting, and https access (using ACME provider) in a few minutes.
+
+Originally based on [swarmprom](https://github.com/stefanprodan/swarmprom)
 
 # Status
 
