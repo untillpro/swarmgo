@@ -4,9 +4,9 @@
 
 # Status
 
-Not quire ready for public usage
+The project is widely used internally, not quire ready for public usage
 
-- traefik runs as a single instance, so resulting cluster is not Fault Tolerant anymore (some downtime will take place if traefik node goes down)
+- traefik runs as a single instance, so resulting cluster is not fault tolerant anymore (some downtime will take place if traefik node goes down)
   - "Single instance" is a result of switching to traefik 2+ version, which broke compatibility with previous setup
 
 # Usage
